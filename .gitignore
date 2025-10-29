@@ -10,6 +10,7 @@ coverage/
 build/
 dist/
 target/
+.next/
 
 # Misc
 .DS_Store
