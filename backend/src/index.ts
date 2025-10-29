@@ -12,8 +12,12 @@ import { LineraClient } from './linera-client';
 import { DatabaseClient } from './database';
 import { RedisClient } from './redis-client';
 import { createAIParser } from '../../parser/src/ai-parser';
+import { resolve, join } from 'path';
 
-dotenv.config();
+// Load .env from project root (not from backend directory)
+// When running from workspace, process.cwd() is the workspace dir, so go up one level
+const rootPath = join(process.cwd(), '..');
+dotenv.config({ path: join(rootPath, '.env') });
 
 const app = express();
 const httpServer = createServer(app);
@@ -102,19 +106,28 @@ io.on('connection', (socket) => {
 
 // Initialize database and start server
 async function start() {
+  // Try to connect to database and Redis, but don't fail if Docker isn't running
   try {
     await dbClient.connect();
-    await redisClient.connect();
-    console.log('Database and Redis connected');
-
-    httpServer.listen(PORT, () => {
-      console.log(`Backend API running on port ${PORT}`);
-      console.log(`WebSocket server ready`);
-    });
-  } catch (error) {
-    console.error('Failed to start server:', error);
-    process.exit(1);
+    console.log('✅ Database connected');
+  } catch (error: any) {
+    console.warn('⚠️  Database not available (PostgreSQL may not be running):', error.message);
+    console.warn('   Backend will work without database - data will not persist');
   }
+
+  try {
+    await redisClient.connect();
+    console.log('✅ Redis connected');
+  } catch (error: any) {
+    console.warn('⚠️  Redis not available (Redis may not be running):', error.message);
+    console.warn('   Backend will work without Redis - caching disabled');
+  }
+
+  // Start server regardless of database status
+  httpServer.listen(PORT, () => {
+    console.log(`✅ Backend API running on port ${PORT}`);
+    console.log(`✅ WebSocket server ready`);
+  });
 }
 
 start();

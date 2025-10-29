@@ -1,7 +1,11 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import dotenv from 'dotenv';
+import { resolve, join } from 'path';
 
-dotenv.config();
+// Load .env from project root
+// When running from workspace, process.cwd() is the workspace dir, so go up one level
+const rootPath = join(process.cwd(), '..');
+dotenv.config({ path: join(rootPath, '.env') });
 
 export interface RawTweet {
   id: string;

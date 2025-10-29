@@ -21,9 +21,21 @@ export class DatabaseClient {
       await this.initializeSchema(client);
       client.release();
       console.log('Database connected and schema initialized');
-    } catch (error) {
-      console.error('Database connection error:', error);
-      throw error;
+    } catch (error: any) {
+      // Don't spam errors - just throw once
+      throw new Error(`Database connection failed: ${error.message}`);
+    }
+  }
+
+  // Check if database is available
+  private async isAvailable(): Promise<boolean> {
+    try {
+      const client = await this.pool.connect();
+      await client.query('SELECT 1');
+      client.release();
+      return true;
+    } catch {
+      return false;
     }
   }
 
@@ -89,6 +101,7 @@ export class DatabaseClient {
   }
 
   async cacheSignal(signal: any): Promise<void> {
+    if (!(await this.isAvailable())) return;
     await this.pool.query(
       `INSERT INTO signals (influencer, token, contract, sentiment, confidence, timestamp, tweet_url)
        VALUES ($1, $2, $3, $4, $5, $6, $7)`,
@@ -105,6 +118,7 @@ export class DatabaseClient {
   }
 
   async cacheStrategy(strategy: any): Promise<void> {
+    if (!(await this.isAvailable())) return;
     await this.pool.query(
       `INSERT INTO strategies (owner, name, strategy_type, parameters, dsl_code, active)
        VALUES ($1, $2, $3, $4, $5, $6)`,
@@ -120,6 +134,7 @@ export class DatabaseClient {
   }
 
   async cacheOrder(order: any): Promise<void> {
+    if (!(await this.isAvailable())) return;
     await this.pool.query(
       `INSERT INTO orders (strategy_id, signal_id, order_type, token, quantity, status, tx_hash, fill_price, filled_at)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
@@ -138,6 +153,7 @@ export class DatabaseClient {
   }
 
   async getRecentSignals(limit: number = 50): Promise<any[]> {
+    if (!(await this.isAvailable())) return [];
     const result = await this.pool.query(
       'SELECT * FROM signals ORDER BY timestamp DESC LIMIT $1',
       [limit]
@@ -146,6 +162,7 @@ export class DatabaseClient {
   }
 
   async getStrategyPerformance(strategyId: number): Promise<any> {
+    if (!(await this.isAvailable())) return null;
     const result = await this.pool.query(
       'SELECT * FROM performance_snapshots WHERE strategy_id = $1 ORDER BY snapshot_at DESC LIMIT 1',
       [strategyId]

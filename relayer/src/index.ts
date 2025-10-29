@@ -2,8 +2,12 @@ import dotenv from 'dotenv';
 import { Connection, Keypair, PublicKey, Transaction } from '@solana/web3.js';
 import bs58 from 'bs58';
 import axios from 'axios';
+import { resolve, join } from 'path';
 
-dotenv.config();
+// Load .env from project root
+// When running from workspace, process.cwd() is the workspace dir, so go up one level
+const rootPath = join(process.cwd(), '..');
+dotenv.config({ path: join(rootPath, '.env') });
 
 interface Signal {
   id: number;
@@ -333,7 +337,17 @@ class RelayerService {
   }
 }
 
-// Start relayer
+// Start relayer only if WALLET_PRIVATE_KEY is available
+const privateKey = process.env.WALLET_PRIVATE_KEY || '';
+
+if (!privateKey) {
+  console.warn('[RELAYER] WALLET_PRIVATE_KEY not found. Relayer service skipped.');
+  console.warn('[RELAYER] To enable relayer, add WALLET_PRIVATE_KEY to .env file');
+  console.warn('[RELAYER] Relayer is optional - frontend and backend will work without it.');
+  // Exit gracefully without error
+  process.exit(0);
+}
+
 const relayer = new RelayerService();
 
 process.on('SIGINT', () => {
