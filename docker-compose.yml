@@ -1,0 +1,59 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: lineratrade-postgres
+    environment:
+      POSTGRES_DB: lineratrade
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: lineratrade-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  linera-node:
+    image: ghcr.io/linera-io/linera-service:latest
+    container_name: lineratrade-linera
+    ports:
+      - "8080:8080"
+      - "9000:9000"
+    volumes:
+      - ./linera-app:/app
+      - linera_data:/data
+    command: >
+      sh -c "linera net up --testing-prng-seed 37 &&
+             linera service --port 8080"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+volumes:
+  postgres_data:
+  redis_data:
+  linera_data:
+
+networks:
+  default:
+    name: lineratrade-network

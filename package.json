@@ -1,0 +1,37 @@
+{
+  "name": "linera-trade-ai",
+  "version": "1.0.0",
+  "description": "AI-powered trading infrastructure on Linera microchains",
+  "private": true,
+  "workspaces": [
+    "backend",
+    "relayer",
+    "frontend",
+    "parser",
+    "ingestion"
+  ],
+  "scripts": {
+    "start": "node start.ps1 || bash start.sh",
+    "dev": "concurrently --names \"BACKEND,RELAYER,FRONTEND\" --prefix-colors \"blue,yellow,magenta\" \"npm run dev:backend\" \"npm run dev:relayer\" \"npm run dev:frontend\"",
+    "dev:backend": "cd backend && npm run dev",
+    "dev:relayer": "cd relayer && npm run dev",
+    "dev:frontend": "cd frontend && npm run dev",
+    "dev:services": "concurrently --names \"BACKEND,FRONTEND\" --prefix-colors \"blue,magenta\" \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "build": "npm run build:backend && npm run build:relayer && npm run build:frontend",
+    "build:backend": "cd backend && npm run build",
+    "build:relayer": "cd relayer && npm run build",
+    "build:frontend": "cd frontend && npm run build",
+    "docker:up": "docker-compose up -d postgres redis",
+    "docker:down": "docker-compose down",
+    "docker:logs": "docker-compose logs -f",
+    "test": "npm run test --workspaces"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2",
+    "typescript": "^5.3.3"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
+  }
+}

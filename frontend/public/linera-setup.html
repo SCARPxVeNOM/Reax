@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Linera Client Setup</title>
+</head>
+<body>
+  <h1>Linera Client Setup Instructions</h1>
+  
+  <h2>Required Import Map</h2>
+  
+  <p>According to Linera documentation, you need an import map for the WASM client to work.</p>
+  
+  <p>Add this to your <code>frontend/src/app/layout.tsx</code>:</p>
+  
+  <pre><code>&lt;script type="importmap"&gt;
+{
+  "imports": {
+    "@linera/client": "https://cdn.example.com/@linera/client@0.15.3/index.js"
+  }
+}
+&lt;/script&gt;</code></pre>
+  
+  <h2>Official Linera Client Documentation</h2>
+  
+  <ul>
+    <li><a href="https://linera.dev/developers/frontend/interactivity.html">Frontend Interactivity Guide</a></li>
+    <li><a href="https://github.com/linera-io/linera-client">Linera Client GitHub</a></li>
+  </ul>
+  
+  <h2>Integration Steps</h2>
+  
+  <ol>
+    <li>Install: <code>npm install @linera/client@0.15.3</code></li>
+    <li>Add import map to HTML</li>
+    <li>Import and initialize in frontend component</li>
+    <li>Call <code>client.frontend().application(APP_ID)</code> to get backend</li>
+    <li>Use <code>backend.query()</code> for GraphQL queries</li>
+  </ol>
+  
+  <h2>GraphQL API</h2>
+  
+  <p>Visit <a href="http://localhost:8080">http://localhost:8080</a> when running <code>linera service</code> to access the GraphQL IDE.</p>
+  
+</body>
+</html>
+
