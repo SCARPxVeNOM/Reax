@@ -48,11 +48,15 @@
 - **Real-time Tweet Monitoring**: Tracks influencer accounts with sub-5-second latency
 - **Advanced Sentiment Analysis**: GPT-4 powered analysis extracting trading signals and token mentions
 - **Multi-Source Ingestion**: Extensible architecture for various data sources (Twitter, Discord, Telegram)
+- **Dynamic User Management**: Add/remove Twitter users to monitor directly from the UI
 
 ### 🔗 Blockchain Integration
 - **Linera Microchains**: Transparent, on-chain storage of all trading state
+- **Compiled Contract**: WASM contract at `linera-app/target/wasm32-unknown-unknown/release/linera_trade_ai.wasm`
+- **Application ID**: Configurable via `LINERA_APP_ID` environment variable
 - **Solana DEX Integration**: Automated execution via Jupiter aggregator
-- **Wallet Management**: Secure wallet connection and management
+- **Multi-DEX Support**: Integration with Jupiter, Binance, Raydium, and other DEXes
+- **Wallet Management**: Secure wallet connection and management (Backpack, etc.)
 - **Event-Driven Architecture**: Real-time updates via WebSocket connections
 
 ### 📊 Trading Features
@@ -61,13 +65,17 @@
   - **Code Mode**: Advanced DSL for complex trading logic
 - **Backtesting**: Historical data simulation with detailed analytics
 - **Performance Tracking**: Real-time P&L, win rate, and performance metrics
+- **Portfolio Management**: On-chain state management for all strategies, signals, and orders
 - **Risk Management**: Built-in stop-loss, take-profit, and position sizing
+- **Trade Suggestions**: AI-powered trade suggestions with DEX route optimization
 
 ### 🎨 User Experience
-- **Modern Dashboard**: Beautiful, responsive Next.js interface
+- **Modern Dashboard**: Beautiful, responsive Next.js interface with glassmorphism design
 - **Real-time Updates**: Live signal feed with WebSocket integration
 - **Performance Charts**: Interactive visualizations with Recharts
 - **Code Editor**: Monaco-based editor for DSL strategy writing
+- **Twitter User Management**: Add/remove monitored Twitter accounts directly from the UI
+- **Glassmorphism UI**: Modern frosted glass effects with animated gradient backgrounds
 
 ## 🏗️ Architecture
 
@@ -210,9 +218,17 @@ Before you begin, ensure you have the following installed:
 6. **Build Linera application** (if deploying)
    ```bash
    cd linera-app
-   cargo build --release
+   cargo build --release --target wasm32-unknown-unknown
    linera project publish-and-create
    cd ..
+   ```
+   
+   The compiled contract will be available at:
+   - `linera-app/target/wasm32-unknown-unknown/release/linera_trade_ai.wasm`
+   
+   After publishing, the application ID will be displayed. Set it in your `.env` file:
+   ```env
+   LINERA_APP_ID=ApplicationId(your_app_id_here)
    ```
 
 7. **Start all services**
@@ -255,28 +271,36 @@ Reax/
 │   │   ├── redis-client.ts  # Redis client
 │   │   ├── linera-client.ts # Linera integration
 │   │   ├── analytics.ts     # Analytics & metrics
-│   │   └── backtesting.ts   # Backtesting engine
+│   │   ├── backtesting.ts   # Backtesting engine
+│   │   ├── suggestion-engine.ts # Trade suggestion engine
+│   │   └── auto-order-service.ts # Automated order execution
 │   ├── package.json
 │   └── tsconfig.json
 │
 ├── frontend/                 # Next.js dashboard
 │   ├── src/
 │   │   ├── app/             # Next.js App Router pages
+│   │   │   ├── auth/        # Authentication pages
+│   │   │   └── globals.css  # Global styles with glassmorphism
 │   │   ├── components/      # React components
-│   │   │   ├── Dashboard.tsx
-│   │   │   ├── StrategyBuilder.tsx
-│   │   │   ├── BacktestingUI.tsx
+│   │   │   ├── TradingDashboard.tsx
+│   │   │   ├── MonitoredUsers.tsx # Twitter user management
+│   │   │   ├── DexIntegrations.tsx # DEX integration display
+│   │   │   ├── SuggestionCard.tsx # Trade suggestions
 │   │   │   ├── SignalFeed.tsx
+│   │   │   ├── StrategyList.tsx
+│   │   │   ├── OrdersList.tsx
 │   │   │   └── ...
 │   │   └── lib/             # Utility functions
 │   │       └── linera-client.ts
 │   ├── public/              # Static assets
+│   │   └── images/          # DEX logos and assets
 │   ├── package.json
 │   └── next.config.js
 │
 ├── ingestion/               # Tweet monitoring service
 │   ├── src/
-│   │   └── index.ts
+│   │   └── index.ts         # Dynamic user monitoring
 │   └── package.json
 │
 ├── parser/                  # AI parser & DSL parser
@@ -288,7 +312,7 @@ Reax/
 │
 ├── relayer/                 # Trade execution service
 │   ├── src/
-│   │   └── index.ts
+│   │   └── index.ts         # Jupiter DEX integration
 │   └── package.json
 │
 ├── linera-app/              # Linera blockchain application
@@ -297,12 +321,25 @@ Reax/
 │   │   ├── state.rs         # State management
 │   │   ├── contract.rs      # Contract logic
 │   │   └── service.rs       # Service endpoints
+│   ├── target/
+│   │   └── wasm32-unknown-unknown/release/
+│   │       └── linera_trade_ai.wasm # Compiled contract
 │   ├── Cargo.toml
 │   └── linera-protocol/     # Linera SDK (submodule)
 │
+├── img/                     # DEX integration logos
+│   ├── jupiter.jpg
+│   ├── binance.jpg
+│   ├── backpack.jpg
+│   └── radiyum.jpg
+│
 ├── docker-compose.yml       # Infrastructure services
+├── Dockerfile              # Docker build configuration
 ├── package.json             # Root workspace config
 ├── .env.example             # Environment template
+├── start.sh                 # Unified startup script (Bash)
+├── start.ps1                # Unified startup script (PowerShell)
+├── start-linera-local.sh    # Local Linera network script
 ├── .gitignore
 └── README.md
 ```
@@ -353,12 +390,21 @@ strategy("RSI Momentum") {
 4. Click **"Validate"** to check syntax
 5. Click **"Create Strategy"** to deploy on-chain
 
+### Managing Monitored Twitter Users
+
+1. Navigate to **Settings** in the sidebar
+2. Enter a Twitter username (without @) in the input field
+3. Click **"Add User"** to start monitoring their tweets
+4. Toggle users active/inactive or delete them as needed
+5. The ingestion service will automatically fetch tweets from all active users
+
 ### Viewing Signals & Performance
 
 - **Dashboard**: http://localhost:3000 - Real-time signal feed
 - **Strategies**: View all active strategies and their performance
 - **Orders**: Monitor executed trades and fills
 - **Analytics**: Charts showing P&L, win rate, and metrics
+- **DEX Integrations**: View connected DEXes and wallet status
 
 ### Running Backtests
 
@@ -380,9 +426,24 @@ See `.env.example` for all available configuration options:
 
 - **Database**: PostgreSQL connection string
 - **Cache**: Redis connection URL
-- **Blockchain**: Linera network URL and private keys
+- **Blockchain**: Linera network URL, application ID, and private keys
 - **APIs**: OpenAI, Twitter, Solana RPC endpoints
 - **Security**: API keys and secrets
+
+### Linera Application ID
+
+After building and publishing the Linera application, you'll receive an Application ID. Set it in your `.env` file:
+
+```env
+LINERA_APP_ID=ApplicationId(your_app_id_here)
+LINERA_RPC_URL=http://localhost:8080
+LINERA_WALLET=/path/to/wallet.json
+LINERA_KEYSTORE=/path/to/keystore.json
+LINERA_STORAGE=rocksdb:/path/to/storage.db
+```
+
+The compiled contract is located at:
+- `linera-app/target/wasm32-unknown-unknown/release/linera_trade_ai.wasm`
 
 ### Docker Configuration
 
@@ -408,6 +469,9 @@ Modify `docker-compose.yml` to adjust:
 - `GET /api/strategies/:id` - Get strategy details
 - `PUT /api/strategies/:id` - Update strategy
 - `DELETE /api/strategies/:id` - Delete strategy
+- `PATCH /api/strategies/:id/activate` - Activate strategy
+- `PATCH /api/strategies/:id/deactivate` - Deactivate strategy
+- `GET /api/strategies/:id/performance` - Get strategy performance metrics
 
 #### Signals
 - `GET /api/signals` - List recent signals
@@ -418,6 +482,16 @@ Modify `docker-compose.yml` to adjust:
 - `GET /api/orders` - List all orders
 - `GET /api/orders/:id` - Get order details
 - `GET /api/orders/strategy/:strategyId` - Get orders for strategy
+
+#### Monitored Users
+- `GET /api/monitored-users` - List all monitored Twitter users
+- `POST /api/monitored-users` - Add a new Twitter user to monitor
+- `DELETE /api/monitored-users/:id` - Remove a monitored user
+- `PATCH /api/monitored-users/:id` - Toggle user active/inactive status
+
+#### Trade Suggestions
+- `GET /api/suggestions` - Get trade suggestions based on signals
+- `POST /api/suggestions/:id/execute` - Execute a trade suggestion
 
 #### Analytics
 - `GET /api/analytics/performance` - Overall performance metrics
@@ -478,6 +552,42 @@ This project is for educational and demonstration purposes. It is NOT intended f
 - ⚠️ Review all smart contract code before deployment
 
 **Use at your own risk. The developers are not responsible for any financial losses.**
+
+## 🚀 Recent Updates
+
+### Wave 1 Updates (Latest)
+
+#### 1. Multi-DEX Integration
+- **Jupiter Aggregator**: Integrated for Solana DEX routing
+- **Automated Execution**: Cross-DEX execution for optimal pricing
+- **Slippage Protection**: Built-in route optimization in relayer service
+- **DEX Logos**: Visual indicators for Jupiter, Binance, Raydium, Backpack
+
+#### 2. Portfolio Management
+- **On-Chain State**: All strategies, signals, and orders stored on Linera microchains
+- **Real-time P&L**: Live tracking of profit/loss, win rate, and performance metrics
+- **Order History**: Complete order tracking with status (Pending, Submitted, Filled, Failed)
+- **Performance Charts**: Visual analytics showing trading performance and signals by token
+- **Risk Management**: Built-in stop-loss, take-profit, and position sizing controls
+
+#### 3. Twitter User Management
+- **Dynamic Monitoring**: Add/remove Twitter users directly from the frontend
+- **User Management UI**: Complete CRUD interface for monitored accounts
+- **Active/Inactive Toggle**: Enable or disable monitoring for specific users
+- **Real-time Updates**: Ingestion service automatically refreshes user list
+
+#### 4. UI/UX Enhancements
+- **Glassmorphism Design**: Modern frosted glass effects throughout the UI
+- **Animated Backgrounds**: Beautiful gradient animations
+- **Improved Visibility**: Fixed text visibility issues in search bars and dropdowns
+- **Project Rebranding**: Updated from "LineraTrade" to "ReaX" across all components
+- **DEX Integration Display**: Visual representation of connected DEXes and wallets
+
+#### 5. Linera Contract
+- **Compiled Contract**: `linera-app/target/wasm32-unknown-unknown/release/linera_trade_ai.wasm`
+- **Application ID**: Configurable via environment variables
+- **On-Chain Operations**: Submit signals, create strategies, manage orders
+- **Event Emission**: Real-time events for frontend updates
 
 ## 📄 License
 
