@@ -52,9 +52,9 @@ export function StrategyList({ strategies, loading = false, onActivate, onDeacti
   };
 
   return (
-    <div className="bg-white rounded-lg shadow-lg p-6 h-[600px] flex flex-col">
+    <div className="glass-panel rounded-xl p-6 h-[600px] flex flex-col">
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-xl font-bold">Strategies</h2>
+        <h2 className="text-xl font-bold text-gray-800">Strategies</h2>
         <div className="flex items-center gap-2">
           {onRefresh && (
             <button

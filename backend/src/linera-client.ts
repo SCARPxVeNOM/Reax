@@ -9,6 +9,12 @@ export interface Signal {
   confidence: number;
   timestamp: number;
   tweet_url: string;
+  entry_price?: number;
+  stop_loss?: number;
+  take_profit?: number;
+  position_size?: number;
+  leverage?: number;
+  platform?: string;
 }
 
 export interface Strategy {

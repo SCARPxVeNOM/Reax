@@ -280,13 +280,14 @@ export class FrontendLineraClient {
 
     // Start polling if not already started
     if (!this.pollInterval) {
-      this.pollInterval = setInterval(async () => {
+        // Poll immediately, then every 5 seconds
+        const poll = async () => {
         try {
           // Get latest data
           const [signals, strategies, orders] = await Promise.all([
-            this.getSignals(10, 0),
-            this.getStrategies(undefined, 10, 0),
-            this.getOrders(undefined, undefined, 10, 0)
+              this.getSignals(50, 0),
+              this.getStrategies(undefined, 50, 0),
+              this.getOrders(undefined, undefined, 50, 0)
           ]);
 
           // Notify all callbacks
@@ -300,7 +301,12 @@ export class FrontendLineraClient {
         } catch (error) {
           console.error('Error polling for updates:', error);
         }
-      }, 3000); // Poll every 3 seconds
+        };
+        
+        // Poll immediately
+        poll();
+        // Then poll every 3 seconds for real-time updates
+        this.pollInterval = setInterval(poll, 3000);
     }
 
     // Return unsubscribe function

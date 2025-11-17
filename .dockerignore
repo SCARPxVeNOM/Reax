@@ -1,0 +1,60 @@
+# Docker ignore file to reduce build context size
+
+# Node modules (will be installed in container)
+node_modules/
+**/node_modules/
+
+# Build artifacts
+**/target/
+**/.next/
+**/dist/
+**/build/
+
+# Git
+.git/
+.gitignore
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Environment files (will be passed as env vars)
+.env
+.env.local
+.env.*.local
+
+# Documentation (not needed in container)
+*.md
+!README.md
+
+# Test files
+**/__tests__/
+**/*.test.*
+**/*.spec.*
+
+# Linera protocol source (we only need the built app)
+linera-app/linera-protocol/target/
+linera-app/linera-protocol/.git/
+
+# Large files
+*.zip
+*.tar.gz
+*.tgz
+
+# Cache
+.cache/
+.npm/
+.yarn/
+

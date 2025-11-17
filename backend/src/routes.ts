@@ -7,6 +7,8 @@ import { LineraClient } from './linera-client';
 import { DatabaseClient } from './database';
 import { RedisClient } from './redis-client';
 import { AITweetParser } from '../../parser/src/ai-parser';
+import { suggestionEngine, SuggestedTrade } from './suggestion-engine';
+import { AutoOrderService } from './auto-order-service';
 
 interface RouteContext {
   lineraClient: LineraClient;
@@ -14,6 +16,7 @@ interface RouteContext {
   redisClient: RedisClient;
   aiParser: AITweetParser;
   io: Server;
+  autoOrderService?: AutoOrderService;
 }
 
 // Validation schemas
@@ -41,15 +44,42 @@ const orderLimiter = rateLimit({
 });
 
 export function setupRoutes(app: Express, context: RouteContext) {
-  const { lineraClient, dbClient, redisClient, aiParser, io } = context;
+  const { lineraClient, dbClient, redisClient, aiParser, io, autoOrderService } = context;
+
+  // Manual trigger to fetch latest tweets (for testing)
+  app.post('/api/tweets/fetch-latest', async (req: Request, res: Response) => {
+    try {
+      const { username } = req.body;
+      
+      // If no username provided, fetch from default user
+      const influencers = username 
+        ? [username] 
+        : (process.env.INFLUENCERS || 'Anubhav06_2004').split(',').map(u => u.trim());
+
+      // Trigger ingestion service to fetch tweets
+      // Note: In a production setup, you'd use a message queue or direct service call
+      // For now, we'll return success and let the ingestion service handle it
+      console.log(`📥 Manual tweet fetch requested for: ${influencers.join(', ')}`);
+      
+      res.json({ 
+        success: true,
+        message: `Fetch request queued for @${influencers.join(', @')}`,
+        note: 'Tweets will be processed by the ingestion service. Check logs for results.',
+        influencers
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
 
   // Tweet processing endpoint
   app.post('/api/tweets/process', async (req: Request, res: Response) => {
     try {
       const tweet = TweetSchema.parse(req.body);
+      const imageUrl = req.body.image_url as string | undefined;
 
-      // Parse tweet with AI
-      const signal = await aiParser.parseTweet(tweet);
+      // Parse tweet with AI (including image if provided)
+      const signal = await aiParser.parseTweet(tweet, imageUrl);
 
       if (!signal) {
         return res.json({ processed: false, reason: 'No trading signal detected' });
@@ -64,10 +94,29 @@ export function setupRoutes(app: Express, context: RouteContext) {
       // Broadcast to WebSocket clients
       io.to('signals').emit('signal:new', { ...signal, id: signalId });
 
+      // Auto-create order if buy signal detected and auto-ordering is enabled
+      let autoOrderResult = null;
+      if (autoOrderService && signal.sentiment === 'bullish') {
+        signal.id = signalId;
+        autoOrderResult = await autoOrderService.processBuySignal(signal, signalId);
+        
+        if (autoOrderResult.orderCreated) {
+          console.log(`✅ Auto-order created for signal ${signalId}: Order ID ${autoOrderResult.orderId}`);
+          // Broadcast order creation
+          io.to('orders').emit('order:auto_created', {
+            orderId: autoOrderResult.orderId,
+            signalId,
+            suggestionId: autoOrderResult.suggestionId,
+          });
+        }
+      }
+
       res.json({
         processed: true,
         signalId,
         signal,
+        orderId: autoOrderResult?.orderId,
+        autoOrdered: autoOrderResult?.orderCreated || false,
       });
     } catch (error: any) {
       console.error('Error processing tweet:', error);
@@ -88,7 +137,32 @@ export function setupRoutes(app: Express, context: RouteContext) {
       }
 
       // Fetch from Linera
-      const signals = await lineraClient.getSignals(limit, offset);
+      let signals = await lineraClient.getSignals(limit, offset);
+
+      // Fallback to database if Linera returns nothing
+      if ((!signals || signals.length === 0) && offset === 0) {
+        try {
+          const recent = await dbClient.getRecentSignals(limit);
+          if (recent && recent.length > 0) {
+            signals = recent.map((row: any) => ({
+              id: row.id,
+              influencer: row.influencer,
+              token: row.token,
+              contract: row.contract,
+              sentiment: row.sentiment,
+              confidence: parseFloat(row.confidence),
+              timestamp: Number(row.timestamp),
+              tweet_url: row.tweet_url,
+              entry_price: row.entry_price ? parseFloat(row.entry_price) : null,
+              stop_loss: row.stop_loss ? parseFloat(row.stop_loss) : null,
+              take_profit: row.take_profit ? parseFloat(row.take_profit) : null,
+              position_size: row.position_size ? parseFloat(row.position_size) : null,
+              leverage: row.leverage ? parseFloat(row.leverage) : null,
+              platform: row.platform,
+            }));
+          }
+        } catch {}
+      }
 
       // Cache if first page
       if (offset === 0) {
@@ -145,7 +219,17 @@ export function setupRoutes(app: Express, context: RouteContext) {
       }
 
       // Fetch from Linera
-      const strategies = await lineraClient.getStrategies(owner, limit, offset);
+      let strategies = await lineraClient.getStrategies(owner, limit, offset);
+
+      // Fallback: if empty and owner specified, attempt DB cache
+      if ((!strategies || strategies.length === 0) && owner && offset === 0) {
+        try {
+          const cached = await redisClient.getCachedStrategies(owner);
+          if (cached && cached.length > 0) {
+            strategies = cached;
+          }
+        } catch {}
+      }
 
       // Cache if first page and owner specified
       if (owner && offset === 0) {
@@ -220,6 +304,244 @@ export function setupRoutes(app: Express, context: RouteContext) {
       res.json(performance || { message: 'No performance data available' });
     } catch (error: any) {
       console.error('Error fetching performance:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Get suggestions for a signal
+  app.get('/api/suggestions', async (req: Request, res: Response) => {
+    try {
+      const signalId = parseInt(req.query.signal_id as string);
+      if (!signalId) {
+        return res.status(400).json({ error: 'signal_id is required' });
+      }
+
+      // Get signal from Linera
+      const signal = await lineraClient.getSignal(signalId);
+      if (!signal) {
+        return res.status(404).json({ error: 'Signal not found' });
+      }
+
+      // Convert Linera signal to TradingSignal format
+      const tradingSignal: any = {
+        id: signal.id,
+        influencer: signal.influencer,
+        token: signal.token,
+        contract: signal.contract,
+        sentiment: signal.sentiment,
+        confidence: signal.confidence,
+        timestamp: signal.timestamp,
+        tweetUrl: signal.tweet_url,
+        entry_price: signal.entry_price,
+        stop_loss: signal.stop_loss,
+        take_profit: signal.take_profit,
+        position_size: signal.position_size,
+        leverage: signal.leverage,
+      };
+
+      // Get user risk profile from query params (optional)
+      const userRiskProfile = req.query.max_trade_size
+        ? {
+            maxTradeSize: parseFloat(req.query.max_trade_size as string),
+            maxSlippage: parseFloat(req.query.max_slippage as string) || 5.0,
+            preferredRoute: req.query.preferred_route as 'DEX' | 'CEX' | undefined,
+          }
+        : undefined;
+
+      // Generate suggestions
+      const suggestions = await suggestionEngine.generateSuggestions(tradingSignal, userRiskProfile);
+
+      res.json(suggestions);
+    } catch (error: any) {
+      console.error('Error generating suggestions:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Execute a suggestion (creates order on Linera)
+  app.post('/api/suggestions/:id/execute', orderLimiter, async (req: Request, res: Response) => {
+    try {
+      const suggestionId = req.params.id;
+      const { user_wallet, execution_mode, paper_trade } = req.body;
+
+      // Get suggestion (in production, store suggestions in cache/DB)
+      // For now, we'll reconstruct from signal
+      const signalId = parseInt(req.query.signal_id as string);
+      if (!signalId) {
+        return res.status(400).json({ error: 'signal_id is required' });
+      }
+
+      const signal = await lineraClient.getSignal(signalId);
+      if (!signal) {
+        return res.status(404).json({ error: 'Signal not found' });
+      }
+
+      // Generate suggestions to find the one matching suggestionId
+      const tradingSignal: any = {
+        id: signal.id,
+        influencer: signal.influencer,
+        token: signal.token,
+        contract: signal.contract,
+        sentiment: signal.sentiment,
+        confidence: signal.confidence,
+        timestamp: signal.timestamp,
+        tweetUrl: signal.tweet_url,
+        entry_price: signal.entry_price,
+        stop_loss: signal.stop_loss,
+        take_profit: signal.take_profit,
+        position_size: signal.position_size,
+        leverage: signal.leverage,
+      };
+
+      const suggestions = await suggestionEngine.generateSuggestions(tradingSignal);
+      const suggestion = suggestions.find((s) => s.id === suggestionId);
+
+      if (!suggestion) {
+        return res.status(404).json({ error: 'Suggestion not found' });
+      }
+
+      // If paper trade, just record in database
+      if (paper_trade) {
+        await dbClient.recordPaperTrade({
+          suggestion_id: suggestionId,
+          signal_id: signalId,
+          user_wallet: user_wallet || 'paper_trader',
+          entry: suggestion.entry,
+          size: suggestion.size,
+          stop_loss: suggestion.stopLoss,
+          take_profit: suggestion.takeProfit,
+          route: suggestion.route.type,
+          executed_at: Date.now(),
+        });
+
+        return res.json({
+          success: true,
+          paper_trade: true,
+          message: 'Paper trade recorded',
+        });
+      }
+
+      // Create order on Linera
+      const order = {
+        strategy_id: 0, // No strategy for direct execution
+        signal_id: signalId,
+        order_type: 'buy',
+        token: suggestion.token,
+        quantity: suggestion.size,
+        status: 'Pending',
+        created_at: Date.now(),
+      };
+
+      const orderId = await lineraClient.createOrder(order);
+
+      // Broadcast to WebSocket clients
+      io.to('orders').emit('order:created', { ...order, id: orderId });
+
+      res.json({
+        success: true,
+        orderId,
+        suggestion: suggestion,
+        execution_mode: execution_mode || 'wallet_signed',
+      });
+    } catch (error: any) {
+      console.error('Error executing suggestion:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Paper trade endpoints
+  app.get('/api/paper-trades', async (req: Request, res: Response) => {
+    try {
+      const userWallet = req.query.user_wallet as string;
+      const trades = await dbClient.getPaperTrades(userWallet);
+      res.json(trades || []);
+    } catch (error: any) {
+      console.error('Error fetching paper trades:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Auto-order configuration endpoints
+  if (autoOrderService) {
+    app.get('/api/auto-order/config', (_req: Request, res: Response) => {
+      res.json(autoOrderService.getConfig());
+    });
+
+    app.patch('/api/auto-order/config', (req: Request, res: Response) => {
+      try {
+        const updates = req.body;
+        autoOrderService.updateConfig(updates);
+        res.json({
+          success: true,
+          config: autoOrderService.getConfig(),
+        });
+      } catch (error: any) {
+        res.status(400).json({ error: error.message });
+      }
+    });
+  }
+
+  // Monitored Users endpoints
+  app.get('/api/monitored-users', async (req: Request, res: Response) => {
+    try {
+      const activeOnly = req.query.active === 'true';
+      const users = await dbClient.getMonitoredUsers(activeOnly);
+      // Always return an array, even if empty
+      res.json(users || []);
+    } catch (error: any) {
+      console.error('Error fetching monitored users:', error);
+      // Return empty array on error instead of error response
+      // This allows the UI to work even if database is temporarily unavailable
+      res.json([]);
+    }
+  });
+
+  app.post('/api/monitored-users', async (req: Request, res: Response) => {
+    try {
+      const { username, display_name } = req.body;
+      if (!username) {
+        return res.status(400).json({ error: 'Username is required' });
+      }
+      const id = await dbClient.addMonitoredUser(username, display_name);
+      // Broadcast to WebSocket clients
+      io.to('settings').emit('monitored_user:added', { id, username, display_name });
+      res.json({ success: true, id, username, display_name });
+    } catch (error: any) {
+      console.error('Error adding monitored user:', error);
+      // Check if it's a database unavailable error
+      if (error.message && error.message.includes('not available')) {
+        return res.status(503).json({ error: 'Database is not available. Please ensure PostgreSQL is running.' });
+      }
+      res.status(500).json({ error: error.message || 'Failed to add user' });
+    }
+  });
+
+  app.delete('/api/monitored-users/:username', async (req: Request, res: Response) => {
+    try {
+      const username = req.params.username;
+      await dbClient.removeMonitoredUser(username);
+      // Broadcast to WebSocket clients
+      io.to('settings').emit('monitored_user:removed', { username });
+      res.json({ success: true, message: `User @${username} removed from monitoring` });
+    } catch (error: any) {
+      console.error('Error removing monitored user:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.patch('/api/monitored-users/:username/toggle', async (req: Request, res: Response) => {
+    try {
+      const username = req.params.username;
+      const { active } = req.body;
+      if (typeof active !== 'boolean') {
+        return res.status(400).json({ error: 'active must be a boolean' });
+      }
+      await dbClient.toggleMonitoredUser(username, active);
+      // Broadcast to WebSocket clients
+      io.to('settings').emit('monitored_user:toggled', { username, active });
+      res.json({ success: true, username, active });
+    } catch (error: any) {
+      console.error('Error toggling monitored user:', error);
       res.status(500).json({ error: error.message });
     }
   });

@@ -8,15 +8,218 @@
   --border: 214.3 31.8% 91.4%;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-    --border: 217.2 32.6% 17.5%;
+/* Force light mode - ensure text is always dark on white backgrounds */
+body {
+  color: #1f2937; /* text-gray-800 */
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 25%, #f093fb 50%, #4facfe 75%, #00f2fe 100%);
+  background-size: 400% 400%;
+  animation: gradientShift 15s ease infinite;
+  min-height: 100vh;
+}
+
+@keyframes gradientShift {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
   }
 }
 
-body {
-  color: hsl(var(--foreground));
-  background: hsl(var(--background));
+/* Glass morphism utility classes */
+.glass {
+  background: rgba(255, 255, 255, 0.25);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+}
+
+.glass-card {
+  background: rgba(255, 255, 255, 0.3);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.2);
+}
+
+.glass-card:hover {
+  background: rgba(255, 255, 255, 0.35);
+  box-shadow: 0 12px 40px 0 rgba(31, 38, 135, 0.3);
+  transform: translateY(-2px);
+  transition: all 0.3s ease;
+}
+
+.glass-panel {
+  background: rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(15px);
+  -webkit-backdrop-filter: blur(15px);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.25);
+}
+
+.glass-input {
+  background: rgba(255, 255, 255, 0.4);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  box-shadow: 0 4px 16px 0 rgba(31, 38, 135, 0.15);
+}
+
+.glass-input:focus {
+  background: rgba(255, 255, 255, 0.5);
+  border-color: rgba(59, 130, 246, 0.5);
+  box-shadow: 0 4px 20px 0 rgba(59, 130, 246, 0.3);
+}
+
+/* Ensure text on white backgrounds is visible - but respect explicit color classes */
+.bg-white {
+  color: #1f2937; /* Default dark text */
+}
+
+/* Only override if no explicit text color class is set */
+.bg-white:not([class*="text-"]) {
+  color: #1f2937;
+}
+
+/* Ensure headings and text elements on white backgrounds are visible */
+.bg-white h1:not([class*="text-"]),
+.bg-white h2:not([class*="text-"]),
+.bg-white h3:not([class*="text-"]),
+.bg-white h4:not([class*="text-"]),
+.bg-white h5:not([class*="text-"]),
+.bg-white h6:not([class*="text-"]),
+.bg-white p:not([class*="text-"]),
+.bg-white span:not([class*="text-"]),
+.bg-white div:not([class*="text-"]) {
+  color: #1f2937;
+}
+
+/* Ensure select and input elements have visible text */
+.bg-white select:not([class*="text-"]),
+.bg-white input:not([class*="text-"]),
+.bg-white textarea:not([class*="text-"]) {
+  color: #1f2937;
+}
+
+/* Force dark text for select options */
+select option {
+  color: #1f2937 !important;
+  background-color: #ffffff !important;
+}
+
+/* Ensure input placeholders are visible but subtle */
+input::placeholder,
+textarea::placeholder {
+  color: #9ca3af !important; /* text-gray-400 */
+}
+
+/* Ensure select elements have dark text */
+select {
+  color: #1f2937 !important; /* text-gray-800 */
+}
+
+/* Ensure all form elements have proper contrast */
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="number"],
+input[type="search"],
+textarea,
+select {
+  color: #1f2937 !important; /* Dark text */
+  background-color: #ffffff !important; /* White background */
+}
+
+/* Force dark text for typed input values */
+input[type="text"]:not(:placeholder-shown),
+input[type="email"]:not(:placeholder-shown),
+input[type="password"]:not(:placeholder-shown),
+input[type="number"]:not(:placeholder-shown),
+input[type="search"]:not(:placeholder-shown),
+textarea:not(:placeholder-shown) {
+  color: #1f2937 !important; /* Dark text when typing */
+}
+
+input[type="text"]::placeholder,
+input[type="email"]::placeholder,
+input[type="password"]::placeholder,
+input[type="number"]::placeholder,
+input[type="search"]::placeholder,
+textarea::placeholder {
+  color: #9ca3af !important; /* Light gray placeholder */
+}
+
+/* Force select dropdown text to be dark */
+select,
+select:focus,
+select:active,
+select option {
+  color: #1f2937 !important; /* Dark text */
+  background-color: #ffffff !important; /* White background */
+}
+
+/* Ensure select shows dark text when opened */
+select:focus option:checked {
+  color: #1f2937 !important;
+  background-color: #eff6ff !important; /* Light blue highlight */
+}
+
+/* Force all input values to be dark */
+input {
+  -webkit-text-fill-color: #1f2937 !important; /* For webkit browsers */
+  color: #1f2937 !important;
+}
+
+/* Override any white text on inputs */
+input[value]:not([value=""]),
+input:not([value=""]) {
+  color: #1f2937 !important;
+}
+
+/* Force dark text for ALL input states */
+input,
+input:focus,
+input:active,
+input:hover,
+input:enabled,
+input:disabled {
+  color: #1f2937 !important;
+  -webkit-text-fill-color: #1f2937 !important;
+}
+
+/* Force dark text for ALL select states */
+select,
+select:focus,
+select:active,
+select:hover,
+select:enabled {
+  color: #1f2937 !important;
+}
+
+/* Force dark text for ALL option elements */
+option {
+  color: #1f2937 !important;
+  background-color: #ffffff !important;
+}
+
+option:checked,
+option:selected,
+option:hover {
+  color: #1f2937 !important;
+  background-color: #eff6ff !important;
+}
+
+/* Override any autofill styles that might make text white */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active {
+  -webkit-text-fill-color: #1f2937 !important;
+  color: #1f2937 !important;
+  -webkit-box-shadow: 0 0 0px 1000px white inset !important;
+  box-shadow: 0 0 0px 1000px white inset !important;
 }

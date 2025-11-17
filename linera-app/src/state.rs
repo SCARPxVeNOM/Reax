@@ -14,6 +14,13 @@ pub struct Signal {
     pub confidence: f64,
     pub timestamp: u64,
     pub tweet_url: String,
+    // Enhanced fields for trade execution
+    pub entry_price: Option<f64>,
+    pub stop_loss: Option<f64>,
+    pub take_profit: Option<f64>,
+    pub position_size: Option<f64>,
+    pub leverage: Option<u8>,
+    pub platform: Option<String>, // "DEX" or "CEX"
 }
 
 /// User trading strategy

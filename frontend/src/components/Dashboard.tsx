@@ -2,10 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useSignals, useStrategies, useOrders, useLinera } from '../lib/linera-hooks';
-import { SignalFeed } from './SignalFeed';
-import { StrategyList } from './StrategyList';
-import { OrdersList } from './OrdersList';
-import { PerformanceChart } from './PerformanceChart';
+import { TradingDashboard } from './TradingDashboard';
 import { VisitorDashboard } from './VisitorDashboard';
 
 export function Dashboard() {
@@ -77,7 +74,7 @@ export function Dashboard() {
 
   if (status === 'loading') {
     return (
-      <div className="flex items-center justify-center min-h-screen">
+      <div className="flex items-center justify-center min-h-screen bg-gray-50">
         <div className="text-center">
           <div className="text-xl text-gray-600 mb-2">Connecting to Linera...</div>
           <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto"></div>
@@ -88,7 +85,7 @@ export function Dashboard() {
 
   if (status === 'error') {
     return (
-      <div className="flex items-center justify-center min-h-screen">
+      <div className="flex items-center justify-center min-h-screen bg-gray-50">
         <div className="text-center max-w-md">
           <div className="text-red-600 text-xl font-bold mb-2">Connection Error</div>
           <div className="text-gray-600 mb-4">Failed to connect to Linera network. Please check:</div>
@@ -108,71 +105,5 @@ export function Dashboard() {
     );
   }
 
-  const isLoading = signalsLoading || strategiesLoading || ordersLoading;
-
-  return (
-    <div className="min-h-screen bg-gray-50 p-6">
-      <div className="max-w-7xl mx-auto">
-        {/* Header with Status */}
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="text-3xl font-bold">LineraTrade AI Dashboard</h1>
-            <p className="text-gray-600 mt-1">Real-time trading signals on Linera blockchain</p>
-          </div>
-          <div className="flex items-center gap-4">
-            <button
-              onClick={() => setShowDemo(true)}
-              className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-sm font-medium shadow-md"
-              title="View demo with sample data"
-            >
-              🎯 View Demo
-            </button>
-            <div className="flex items-center gap-2">
-              <div className={`w-3 h-3 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'} animate-pulse`}></div>
-              <span className="text-sm text-gray-600">
-                {isConnected ? 'Connected to Linera' : 'Disconnected'}
-              </span>
-            </div>
-          </div>
-        </div>
-
-        {/* Grid Layout */}
-        <div className="grid grid-cols-12 gap-6">
-          {/* Live Signal Feed */}
-          <div className="col-span-4">
-            <SignalFeed 
-              signals={signals} 
-              loading={signalsLoading}
-              onRefresh={refetchSignals}
-            />
-          </div>
-
-          {/* Active Strategies */}
-          <div className="col-span-4">
-            <StrategyList
-              strategies={strategies}
-              loading={strategiesLoading}
-              onActivate={handleActivateStrategy}
-              onDeactivate={handleDeactivateStrategy}
-              onRefresh={refetchStrategies}
-            />
-          </div>
-
-          {/* Recent Orders */}
-          <div className="col-span-4">
-            <OrdersList 
-              orders={orders} 
-              loading={ordersLoading}
-              onRefresh={refetchOrders}
-            />
-          </div>
-
-          {/* Performance Chart */}
-          <div className="col-span-12">
-            <PerformanceChart orders={orders} />
-          </div>
-        </div>
-      </div>
-    </div>
-  );
+  return <TradingDashboard />;
 }

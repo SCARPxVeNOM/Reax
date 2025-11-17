@@ -123,13 +123,37 @@ export function CodeStrategyBuilder() {
             defaultLanguage="javascript"
             value={code}
             onChange={(value) => setCode(value || '')}
-            theme="vs-dark"
+            theme="reax-dark"
             options={{
               minimap: { enabled: false },
               fontSize: 14,
               lineNumbers: 'on',
               scrollBeyondLastLine: false,
               wordWrap: 'on',
+              fontFamily: 'monospace',
+              fontWeight: 'normal',
+            }}
+            beforeMount={(monaco) => {
+              // Define a custom theme with white text
+              monaco.editor.defineTheme('reax-dark', {
+                base: 'vs-dark',
+                inherit: true,
+                rules: [
+                  { token: '', foreground: 'ffffff' },
+                  { token: 'comment', foreground: '6a9955' },
+                  { token: 'keyword', foreground: '569cd6' },
+                  { token: 'string', foreground: 'ce9178' },
+                  { token: 'number', foreground: 'b5cea8' },
+                  { token: 'identifier', foreground: 'ffffff' },
+                ],
+                colors: {
+                  'editor.foreground': '#ffffff',
+                  'editor.background': '#1e1e1e',
+                  'editor.lineHighlightBackground': '#2a2d2e',
+                  'editor.selectionBackground': '#264f78',
+                  'editorCursor.foreground': '#ffffff',
+                },
+              });
             }}
           />
         </div>

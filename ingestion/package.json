@@ -7,7 +7,8 @@
     "dev": "tsx watch src/index.ts",
     "build": "tsc",
     "start": "node dist/index.js",
-    "test": "jest"
+    "test": "jest",
+    "test:user": "npx tsx src/test-user.ts"
   },
   "dependencies": {
     "dotenv": "^16.3.1",

@@ -51,9 +51,9 @@ export function OrdersList({ orders, loading = false, onRefresh }: OrdersListPro
   };
 
   return (
-    <div className="bg-white rounded-lg shadow-lg p-6 h-[600px] flex flex-col">
+    <div className="glass-panel rounded-xl p-6 h-[600px] flex flex-col">
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-xl font-bold">Recent Orders</h2>
+        <h2 className="text-xl font-bold text-gray-800">Recent Orders</h2>
         <div className="flex items-center gap-2">
           {onRefresh && (
             <button

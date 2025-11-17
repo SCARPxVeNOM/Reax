@@ -54,6 +54,12 @@ export class DatabaseClient {
         confidence DECIMAL(3,2) NOT NULL,
         timestamp BIGINT NOT NULL,
         tweet_url TEXT,
+        entry_price DECIMAL(20,8),
+        stop_loss DECIMAL(20,8),
+        take_profit DECIMAL(20,8),
+        position_size DECIMAL(20,8),
+        leverage DECIMAL(5,2),
+        platform VARCHAR(50),
         created_at TIMESTAMP DEFAULT NOW()
       );
 
@@ -94,17 +100,62 @@ export class DatabaseClient {
         snapshot_at TIMESTAMP DEFAULT NOW()
       );
 
+      CREATE TABLE IF NOT EXISTS paper_trades (
+        id BIGSERIAL PRIMARY KEY,
+        suggestion_id VARCHAR(255) NOT NULL,
+        signal_id BIGINT NOT NULL,
+        user_wallet VARCHAR(255) NOT NULL,
+        entry DECIMAL(20,8) NOT NULL,
+        size DECIMAL(20,8) NOT NULL,
+        stop_loss DECIMAL(20,8),
+        take_profit DECIMAL(20,8),
+        route VARCHAR(50) NOT NULL,
+        executed_at TIMESTAMP DEFAULT NOW(),
+        closed_at TIMESTAMP,
+        exit_price DECIMAL(20,8),
+        pnl DECIMAL(20,8)
+      );
+
+      CREATE TABLE IF NOT EXISTS monitored_users (
+        id BIGSERIAL PRIMARY KEY,
+        username VARCHAR(255) NOT NULL UNIQUE,
+        display_name VARCHAR(255),
+        active BOOLEAN DEFAULT TRUE,
+        created_at TIMESTAMP DEFAULT NOW(),
+        updated_at TIMESTAMP DEFAULT NOW()
+      );
+
       CREATE INDEX IF NOT EXISTS idx_signals_timestamp ON signals(timestamp DESC);
       CREATE INDEX IF NOT EXISTS idx_orders_strategy ON orders(strategy_id);
       CREATE INDEX IF NOT EXISTS idx_orders_status ON orders(status);
+      CREATE INDEX IF NOT EXISTS idx_paper_trades_user ON paper_trades(user_wallet);
+      CREATE INDEX IF NOT EXISTS idx_paper_trades_signal ON paper_trades(signal_id);
+      CREATE INDEX IF NOT EXISTS idx_monitored_users_active ON monitored_users(active);
     `);
   }
 
   async cacheSignal(signal: any): Promise<void> {
     if (!(await this.isAvailable())) return;
+    
+    // Add new columns if they don't exist (migration)
+    try {
+      await this.pool.query(`
+        ALTER TABLE signals 
+        ADD COLUMN IF NOT EXISTS entry_price DECIMAL(20,8),
+        ADD COLUMN IF NOT EXISTS stop_loss DECIMAL(20,8),
+        ADD COLUMN IF NOT EXISTS take_profit DECIMAL(20,8),
+        ADD COLUMN IF NOT EXISTS position_size DECIMAL(20,8),
+        ADD COLUMN IF NOT EXISTS leverage DECIMAL(5,2),
+        ADD COLUMN IF NOT EXISTS platform VARCHAR(50);
+      `);
+    } catch (e) {
+      // Columns might already exist, ignore
+    }
+    
     await this.pool.query(
-      `INSERT INTO signals (influencer, token, contract, sentiment, confidence, timestamp, tweet_url)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+      `INSERT INTO signals (influencer, token, contract, sentiment, confidence, timestamp, tweet_url, entry_price, stop_loss, take_profit, position_size, leverage, platform)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+       ON CONFLICT DO NOTHING`,
       [
         signal.influencer,
         signal.token,
@@ -113,22 +164,42 @@ export class DatabaseClient {
         signal.confidence,
         signal.timestamp,
         signal.tweetUrl,
+        signal.entry_price || null,
+        signal.stop_loss || null,
+        signal.take_profit || null,
+        signal.position_size || null,
+        signal.leverage || null,
+        signal.platform || null,
       ]
     );
   }
 
   async cacheStrategy(strategy: any): Promise<void> {
     if (!(await this.isAvailable())) return;
+
+    // Normalize strategy_type for storage
+    let type: string = 'Form';
+    let parameters: any = null;
+    let dslCode: string | null = null;
+
+    if (strategy.strategy_type && strategy.strategy_type.Form) {
+      type = 'Form';
+      parameters = strategy.strategy_type.Form;
+    } else if (strategy.strategy_type && strategy.strategy_type.DSL) {
+      type = 'DSL';
+      dslCode = strategy.strategy_type.DSL;
+    }
+
     await this.pool.query(
       `INSERT INTO strategies (owner, name, strategy_type, parameters, dsl_code, active)
        VALUES ($1, $2, $3, $4, $5, $6)`,
       [
         strategy.owner,
         strategy.name,
-        strategy.strategy_type,
-        JSON.stringify(strategy.parameters),
-        strategy.dsl_code,
-        strategy.active,
+        type,
+        parameters ? JSON.stringify(parameters) : null,
+        dslCode,
+        strategy.active ?? false,
       ]
     );
   }
@@ -168,5 +239,92 @@ export class DatabaseClient {
       [strategyId]
     );
     return result.rows[0] || null;
+  }
+
+  async recordPaperTrade(trade: {
+    suggestion_id: string;
+    signal_id: number;
+    user_wallet: string;
+    entry: number;
+    size: number;
+    stop_loss?: number;
+    take_profit?: number;
+    route: string;
+    executed_at: number;
+  }): Promise<void> {
+    if (!(await this.isAvailable())) return;
+    await this.pool.query(
+      `INSERT INTO paper_trades (suggestion_id, signal_id, user_wallet, entry, size, stop_loss, take_profit, route, executed_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+      [
+        trade.suggestion_id,
+        trade.signal_id,
+        trade.user_wallet,
+        trade.entry,
+        trade.size,
+        trade.stop_loss || null,
+        trade.take_profit || null,
+        trade.route,
+        new Date(trade.executed_at),
+      ]
+    );
+  }
+
+  async getPaperTrades(userWallet?: string): Promise<any[]> {
+    if (!(await this.isAvailable())) return [];
+    if (userWallet) {
+      const result = await this.pool.query(
+        'SELECT * FROM paper_trades WHERE user_wallet = $1 ORDER BY executed_at DESC',
+        [userWallet]
+      );
+      return result.rows;
+    } else {
+      const result = await this.pool.query(
+        'SELECT * FROM paper_trades ORDER BY executed_at DESC LIMIT 100'
+      );
+      return result.rows;
+    }
+  }
+
+  // Monitored Users methods
+  async getMonitoredUsers(activeOnly: boolean = false): Promise<any[]> {
+    if (!(await this.isAvailable())) return [];
+    const query = activeOnly
+      ? 'SELECT * FROM monitored_users WHERE active = TRUE ORDER BY created_at DESC'
+      : 'SELECT * FROM monitored_users ORDER BY created_at DESC';
+    const result = await this.pool.query(query);
+    return result.rows;
+  }
+
+  async addMonitoredUser(username: string, displayName?: string): Promise<number> {
+    if (!(await this.isAvailable())) throw new Error('Database not available');
+    // Remove @ if present
+    const cleanUsername = username.replace(/^@/, '').trim();
+    const result = await this.pool.query(
+      `INSERT INTO monitored_users (username, display_name, active)
+       VALUES ($1, $2, TRUE)
+       ON CONFLICT (username) DO UPDATE SET active = TRUE, updated_at = NOW()
+       RETURNING id`,
+      [cleanUsername, displayName || cleanUsername]
+    );
+    return result.rows[0].id;
+  }
+
+  async removeMonitoredUser(username: string): Promise<void> {
+    if (!(await this.isAvailable())) throw new Error('Database not available');
+    const cleanUsername = username.replace(/^@/, '').trim();
+    await this.pool.query(
+      'DELETE FROM monitored_users WHERE username = $1',
+      [cleanUsername]
+    );
+  }
+
+  async toggleMonitoredUser(username: string, active: boolean): Promise<void> {
+    if (!(await this.isAvailable())) throw new Error('Database not available');
+    const cleanUsername = username.replace(/^@/, '').trim();
+    await this.pool.query(
+      'UPDATE monitored_users SET active = $1, updated_at = NOW() WHERE username = $2',
+      [active, cleanUsername]
+    );
   }
 }

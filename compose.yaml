@@ -1,0 +1,37 @@
+# Linera Buildathon Template - Docker Compose Configuration
+# Based on https://github.com/linera-io/buildathon-template
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: lineratrade-buildathon
+    ports:
+      - "5173:5173"   # Frontend (Next.js)
+      - "8080:8080"   # Linera faucet
+      - "9001:9001"   # Validator proxy
+      - "13001:13001" # Validator
+    volumes:
+      - .:/build
+      - linera_data:/data
+    working_dir: /build
+    command: /bin/bash run.bash
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5173/"]
+      interval: 10s
+      timeout: 5s
+      start_period: 30s
+      retries: 3
+    environment:
+      - NODE_ENV=production
+      - NEXT_PUBLIC_API_URL=http://localhost:3001
+      - LINERA_RPC_URL=http://localhost:8080
+
+volumes:
+  linera_data:
+
+networks:
+  default:
+    name: lineratrade-network
+

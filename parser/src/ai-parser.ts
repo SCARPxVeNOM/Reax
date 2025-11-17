@@ -16,6 +16,7 @@ export interface RawTweet {
 }
 
 export interface TradingSignal {
+  id?: number;
   influencer: string;
   token: string;
   contract: string;
@@ -23,6 +24,13 @@ export interface TradingSignal {
   confidence: number;
   timestamp: number;
   tweetUrl: string;
+  // Enhanced fields for trade execution
+  entry_price?: number;
+  stop_loss?: number;
+  take_profit?: number;
+  position_size?: number;
+  leverage?: number;
+  platform?: 'DEX' | 'CEX';
 }
 
 export interface TokenMention {
@@ -34,6 +42,11 @@ export interface LLMResponse {
   sentiment: 'bullish' | 'bearish' | 'neutral';
   confidence: number;
   tokens: TokenMention[];
+  entry?: number;
+  stopLoss?: number;
+  takeProfit?: number;
+  positionSize?: number;
+  leverage?: number;
 }
 
 export class AITweetParser {
@@ -59,12 +72,48 @@ export class AITweetParser {
     return registry;
   }
 
-  async parseTweet(tweet: RawTweet): Promise<TradingSignal | null> {
+  async parseTweet(tweet: RawTweet, imageUrl?: string): Promise<TradingSignal | null> {
     try {
       const startTime = Date.now();
 
-      // Call LLM for sentiment analysis
-      const llmResponse = await this.analyzeSentiment(tweet);
+      // Fast-path heuristic: handle very explicit tweets without calling LLM
+      const textLower = tweet.text.toLowerCase();
+      const bullishHints = ['buy', 'buying', 'long', 'moon', 'pump', 'bull'];
+      const bearishHints = ['sell', 'selling', 'short', 'dump', 'bear'];
+      const mentionedTokens: string[] = [];
+      for (const symbol of this.tokenRegistry.keys()) {
+        if (textLower.includes(symbol.toLowerCase())) {
+          mentionedTokens.push(symbol);
+        }
+      }
+      const hasBullish = bullishHints.some((w) => textLower.includes(w));
+      const hasBearish = bearishHints.some((w) => textLower.includes(w));
+
+      // Extract price levels from text (SL, TP, Entry)
+      const priceExtraction = this.extractPriceLevels(tweet.text);
+
+      if (mentionedTokens.length > 0 && (hasBullish || hasBearish)) {
+        const primary = mentionedTokens[0];
+        const contract = await this.resolveContract(primary);
+        const signal: TradingSignal = {
+          influencer: tweet.author,
+          token: primary,
+          contract: contract || 'UNKNOWN',
+          sentiment: hasBullish ? 'bullish' : 'bearish',
+          confidence: 0.9,
+          timestamp: tweet.timestamp,
+          tweetUrl: tweet.url,
+          entry_price: priceExtraction.entry,
+          stop_loss: priceExtraction.stopLoss,
+          take_profit: priceExtraction.takeProfit,
+          position_size: priceExtraction.positionSize,
+          leverage: priceExtraction.leverage,
+        };
+        return signal;
+      }
+
+      // Call LLM for sentiment analysis and price extraction
+      const llmResponse = await this.analyzeSentiment(tweet, imageUrl);
 
       // Check latency requirement (<3 seconds)
       const latency = Date.now() - startTime;
@@ -84,6 +133,15 @@ export class AITweetParser {
       // Resolve contract address
       const contract = await this.resolveContract(primaryToken.symbol, primaryToken.contract);
 
+      // Merge LLM-extracted prices with text-extracted prices
+      const finalPrices = {
+        entry: llmResponse.entry || priceExtraction.entry,
+        stopLoss: llmResponse.stopLoss || priceExtraction.stopLoss,
+        takeProfit: llmResponse.takeProfit || priceExtraction.takeProfit,
+        positionSize: llmResponse.positionSize || priceExtraction.positionSize,
+        leverage: llmResponse.leverage || priceExtraction.leverage,
+      };
+
       // Create trading signal
       const signal: TradingSignal = {
         influencer: tweet.author,
@@ -93,6 +151,11 @@ export class AITweetParser {
         confidence: llmResponse.confidence,
         timestamp: tweet.timestamp,
         tweetUrl: tweet.url,
+        entry_price: finalPrices.entry,
+        stop_loss: finalPrices.stopLoss,
+        take_profit: finalPrices.takeProfit,
+        position_size: finalPrices.positionSize,
+        leverage: finalPrices.leverage,
       };
 
       // Log low-confidence signals
@@ -107,32 +170,144 @@ export class AITweetParser {
     }
   }
 
-  private async analyzeSentiment(tweet: RawTweet): Promise<LLMResponse> {
-    const prompt = `You are a cryptocurrency trading signal analyzer. Analyze the following tweet and respond with ONLY valid JSON.
+  /**
+   * Extract price levels from tweet text using regex patterns
+   */
+  private extractPriceLevels(text: string): {
+    entry?: number;
+    stopLoss?: number;
+    takeProfit?: number;
+    positionSize?: number;
+    leverage?: number;
+  } {
+    const result: {
+      entry?: number;
+      stopLoss?: number;
+      takeProfit?: number;
+      positionSize?: number;
+      leverage?: number;
+    } = {};
+
+    // Patterns for common price mentions
+    // SL: 318.3, Stop Loss: 318, SL=318
+    const slPatterns = [
+      /SL[:\s=]+(\d+\.?\d*)/i,
+      /stop\s+loss[:\s=]+(\d+\.?\d*)/i,
+      /sl[:\s=]+(\d+\.?\d*)/i,
+    ];
+    for (const pattern of slPatterns) {
+      const match = text.match(pattern);
+      if (match) {
+        result.stopLoss = parseFloat(match[1]);
+        break;
+      }
+    }
+
+    // TP: 350, Take Profit: 350, TP=350
+    const tpPatterns = [
+      /TP[:\s=]+(\d+\.?\d*)/i,
+      /take\s+profit[:\s=]+(\d+\.?\d*)/i,
+      /tp[:\s=]+(\d+\.?\d*)/i,
+    ];
+    for (const pattern of tpPatterns) {
+      const match = text.match(pattern);
+      if (match) {
+        result.takeProfit = parseFloat(match[1]);
+        break;
+      }
+    }
+
+    // Entry: 330, Entry: 330, Entry=330
+    const entryPatterns = [
+      /entry[:\s=]+(\d+\.?\d*)/i,
+      /buy[:\s]+at[:\s]+(\d+\.?\d*)/i,
+      /long[:\s]+(\d+\.?\d*)/i,
+    ];
+    for (const pattern of entryPatterns) {
+      const match = text.match(pattern);
+      if (match) {
+        result.entry = parseFloat(match[1]);
+        break;
+      }
+    }
+
+    // Position size: $50, 50 USDT, size: 50
+    const sizePatterns = [
+      /\$(\d+\.?\d*)/,
+      /(\d+\.?\d*)\s*(usdt|usd)/i,
+      /size[:\s=]+(\d+\.?\d*)/i,
+    ];
+    for (const pattern of sizePatterns) {
+      const match = text.match(pattern);
+      if (match) {
+        result.positionSize = parseFloat(match[1]);
+        break;
+      }
+    }
+
+    // Leverage: 11X, 11x, leverage: 11
+    const leveragePatterns = [
+      /(\d+)x/i,
+      /leverage[:\s=]+(\d+)/i,
+    ];
+    for (const pattern of leveragePatterns) {
+      const match = text.match(pattern);
+      if (match) {
+        result.leverage = parseInt(match[1]);
+        break;
+      }
+    }
+
+    return result;
+  }
+
+  private async analyzeSentiment(tweet: RawTweet, imageUrl?: string): Promise<LLMResponse> {
+    let prompt = `You are a cryptocurrency trading signal analyzer. Analyze the following tweet and respond with ONLY valid JSON.
 
 Tweet: "${tweet.text}"
-Author: "${tweet.author}"
+Author: "${tweet.author}"`;
 
-Extract:
+    // Use vision model if image is provided
+    const model = imageUrl 
+      ? this.genAI.getGenerativeModel({ model: 'gemini-pro-vision' })
+      : this.model;
+
+    if (imageUrl) {
+      prompt += `\n\nImage URL: ${imageUrl}`;
+    }
+
+    prompt += `\n\nExtract:
 1. Sentiment: bullish, bearish, or neutral
 2. Confidence: 0.0 to 1.0 (how confident are you in this sentiment?)
 3. Token mentions: list of cryptocurrency token symbols mentioned
+4. Entry price: if mentioned (e.g., "entry 330", "buy at 330")
+5. Stop Loss: if mentioned (e.g., "SL: 318.3", "stop loss 318")
+6. Take Profit: if mentioned (e.g., "TP: 350", "target 350")
+7. Position size: if mentioned (e.g., "$50", "50 USDT")
+8. Leverage: if mentioned (e.g., "11X", "leverage 11")
 
 Rules:
 - Only identify sentiment if there's clear positive/negative indication about a specific token
 - Confidence should reflect how explicit the sentiment is
-- Extract all token symbols mentioned (e.g., BTC, ETH, SOL, BONK, etc.)
+- Extract all token symbols mentioned (e.g., BTC, ETH, SOL, BONK, TAO, etc.)
+- Extract numeric values for prices, sizes, and leverage if explicitly mentioned
+- If analyzing an image, look for trading charts, position cards, or price levels
 - If no clear sentiment or tokens, return neutral with low confidence
 
 Respond with ONLY this JSON format (no other text):
 {
   "sentiment": "bullish|bearish|neutral",
   "confidence": 0.95,
-  "tokens": [{"symbol": "SOL", "contract": ""}]
+  "tokens": [{"symbol": "SOL", "contract": ""}],
+  "entry": 330.0,
+  "stopLoss": 318.3,
+  "takeProfit": 350.0,
+  "positionSize": 50.0,
+  "leverage": 11
 }`;
 
     try {
-      const result = await this.model.generateContent(prompt);
+      const result = await model.generateContent(prompt);
       const response = await result.response;
       let responseText = response.text();
 
@@ -146,6 +321,11 @@ Respond with ONLY this JSON format (no other text):
         sentiment: this.normalizeSentiment(parsed.sentiment),
         confidence: Math.max(0, Math.min(1, parsed.confidence || 0)),
         tokens: Array.isArray(parsed.tokens) ? parsed.tokens : [],
+        entry: parsed.entry ? parseFloat(parsed.entry) : undefined,
+        stopLoss: parsed.stopLoss ? parseFloat(parsed.stopLoss) : undefined,
+        takeProfit: parsed.takeProfit ? parseFloat(parsed.takeProfit) : undefined,
+        positionSize: parsed.positionSize ? parseFloat(parsed.positionSize) : undefined,
+        leverage: parsed.leverage ? parseInt(parsed.leverage) : undefined,
       };
     } catch (error: any) {
       console.error('Gemini API error:', error.message);

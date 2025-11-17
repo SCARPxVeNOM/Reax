@@ -200,7 +200,7 @@ export function VisitorDashboard() {
         {/* Dashboard Header */}
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h1 className="text-3xl font-bold">LineraTrade AI Dashboard</h1>
+            <h1 className="text-3xl font-bold">ReaX Dashboard</h1>
             <p className="text-gray-600 mt-1">Real-time trading signals on Linera blockchain - Demo Version</p>
           </div>
           <div className="flex items-center gap-2">
