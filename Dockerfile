@@ -1,7 +1,7 @@
 # Linera Buildathon Template Dockerfile
 # Based on https://github.com/linera-io/buildathon-template
 
-FROM rust:1.82-slim AS rust-builder
+FROM rust:1.86-slim AS rust-builder
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
@@ -11,17 +11,27 @@ RUN apt-get update && apt-get install -y \
     curl \
     git \
     ca-certificates \
+    libclang-dev \
+    clang \
+    xz-utils \
+    protobuf-compiler \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Linera CLI
-# Note: Installing without --locked to avoid Cargo lock file version conflicts
-# If this fails, the run.bash script will handle Linera setup
-RUN cargo install linera-service || \
-    echo "⚠️  Linera installation failed, will be installed in run.bash if needed"
+# Skip Linera CLI installation in builder - will be installed at runtime
+# This avoids edition2024 compatibility issues during build
+RUN echo "Linera CLI will be installed at runtime"
 
-# Install Node.js 18+
-RUN curl -fsSL https://deb.nodesource.com/setup_18.x | bash - && \
-    apt-get install -y nodejs
+# Install Node.js 20 LTS (more reliable installation method)
+RUN (curl -fsSL https://deb.nodesource.com/setup_20.x | bash - && \
+     apt-get install -y nodejs) || \
+    (echo "NodeSource setup failed, trying direct download..." && \
+     curl -fsSL https://nodejs.org/dist/v20.18.0/node-v20.18.0-linux-x64.tar.xz -o /tmp/node.tar.xz && \
+     tar -xJf /tmp/node.tar.xz -C /usr/local --strip-components=1 && \
+     rm /tmp/node.tar.xz && \
+     ln -sf /usr/local/bin/node /usr/bin/node && \
+     ln -sf /usr/local/bin/npm /usr/bin/npm) || \
+    (echo "Direct download failed, using Debian default..." && \
+     apt-get install -y nodejs npm || true)
 
 # Install npm dependencies globally (for convenience)
 RUN npm install -g concurrently
@@ -40,6 +50,15 @@ COPY . .
 WORKDIR /build/linera-app
 # Install wasm32 target if not already installed
 RUN rustup target add wasm32-unknown-unknown
+# Use the Rust version specified in linera-protocol if available
+RUN if [ -f "linera-protocol/toolchains/stable/rust-toolchain.toml" ]; then \
+        RUST_VERSION=$(grep -oP 'channel = "\K[^"]+' linera-protocol/toolchains/stable/rust-toolchain.toml | head -1) && \
+        if [ -n "$RUST_VERSION" ]; then \
+            echo "Using Rust version $RUST_VERSION from linera-protocol" && \
+            rustup install $RUST_VERSION && \
+            rustup default $RUST_VERSION; \
+        fi; \
+    fi
 RUN cargo build --release --target wasm32-unknown-unknown || \
     (echo "⚠️  Linera build failed, but continuing..." && \
      mkdir -p target/wasm32-unknown-unknown/release && \
@@ -52,22 +71,41 @@ RUN npm ci --legacy-peer-deps || npm install
 RUN npm run build || echo "⚠️  Frontend build failed, will use dev mode"
 
 # Final stage
-FROM rust:1.82-slim
+FROM rust:1.86-slim
 
 RUN apt-get update && apt-get install -y \
     curl \
+    git \
     ca-certificates \
+    build-essential \
+    pkg-config \
+    libssl-dev \
+    libclang-dev \
+    clang \
+    xz-utils \
+    protobuf-compiler \
+    lsof \
+    net-tools \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Node.js 18+
-RUN curl -fsSL https://deb.nodesource.com/setup_18.x | bash - && \
-    apt-get install -y nodejs && \
-    rm -rf /var/lib/apt/lists/*
+# Install Node.js 20 LTS (more reliable installation method)
+RUN (curl -fsSL https://deb.nodesource.com/setup_20.x | bash - && \
+     apt-get install -y nodejs && \
+     rm -rf /var/lib/apt/lists/*) || \
+    (echo "NodeSource setup failed, trying direct download..." && \
+     curl -fsSL https://nodejs.org/dist/v20.18.0/node-v20.18.0-linux-x64.tar.xz -o /tmp/node.tar.xz && \
+     tar -xJf /tmp/node.tar.xz -C /usr/local --strip-components=1 && \
+     rm /tmp/node.tar.xz && \
+     ln -sf /usr/local/bin/node /usr/bin/node && \
+     ln -sf /usr/local/bin/npm /usr/bin/npm) || \
+    (echo "Direct download failed, using Debian default..." && \
+     apt-get install -y nodejs npm && \
+     rm -rf /var/lib/apt/lists/* || true)
 
-# Install Linera CLI in final image (without --locked to avoid lock file version issues)
-RUN cargo install linera-service || \
-    (echo "⚠️  Linera installation failed, will use system Linera if available" && \
-     echo "You may need to install Linera manually in the container")
+# Install Linera CLI in final image
+# Skip installation here - run.bash will handle it with proper error handling
+# This avoids build-time issues with edition2024 requirements
+RUN echo "⚠️  Linera will be installed at runtime by run.bash"
 
 WORKDIR /build
 

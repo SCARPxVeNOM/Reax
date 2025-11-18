@@ -7,6 +7,12 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: lineratrade-buildathon
+    # Increase memory limit if build fails with SIGKILL
+    # Uncomment and adjust if needed:
+    # deploy:
+    #   resources:
+    #     limits:
+    #       memory: 4G
     ports:
       - "5173:5173"   # Frontend (Next.js)
       - "8080:8080"   # Linera faucet

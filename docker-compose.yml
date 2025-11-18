@@ -33,8 +33,9 @@ services:
     image: ghcr.io/linera-io/linera-service:latest
     container_name: lineratrade-linera
     ports:
-      - "8080:8080"
-      - "9000:9000"
+      - "8080:8080"   # Linera faucet
+      - "9001:9001"   # Validator proxy
+      - "13001:13001" # Validator
     volumes:
       - ./linera-app:/app
       - linera_data:/data

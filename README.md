@@ -251,13 +251,16 @@ Before you begin, ensure you have the following installed:
    # Or start individually:
    npm run dev:backend   # Backend API on :3001
    npm run dev:relayer   # Relayer service
-   npm run dev:frontend  # Frontend on :3000
+   npm run dev:frontend  # Frontend on :5173 (buildathon template)
    ```
 
 8. **Access the application**
-   - Frontend Dashboard: http://localhost:3000
+   - Frontend Dashboard: http://localhost:5173 (buildathon template port)
    - Backend API: http://localhost:3001
    - API Health: http://localhost:3001/health
+   - Linera Faucet: http://localhost:8080
+   - Validator Proxy: http://localhost:9001
+   - Validator: http://localhost:13001
 
 ## 📁 Project Structure
 
@@ -348,7 +351,7 @@ Reax/
 
 ### Creating a Strategy (Form Mode)
 
-1. Navigate to http://localhost:3000/builder
+1. Navigate to http://localhost:5173/builder
 2. Select **"Form Mode"** tab
 3. Fill in strategy parameters:
    - Strategy name and description
@@ -359,7 +362,7 @@ Reax/
 
 ### Creating a Strategy (Code Mode)
 
-1. Navigate to http://localhost:3000/builder
+1. Navigate to http://localhost:5173/builder
 2. Select **"Code Mode"** tab
 3. Write your strategy using the REAX DSL:
 
@@ -400,7 +403,7 @@ strategy("RSI Momentum") {
 
 ### Viewing Signals & Performance
 
-- **Dashboard**: http://localhost:3000 - Real-time signal feed
+- **Dashboard**: http://localhost:5173 - Real-time signal feed
 - **Strategies**: View all active strategies and their performance
 - **Orders**: Monitor executed trades and fills
 - **Analytics**: Charts showing P&L, win rate, and metrics

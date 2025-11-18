@@ -84,7 +84,7 @@ fi
 # Start all Node.js services
 echo -e "\n${YELLOW}🎯 Starting Node.js services...${NC}"
 echo -e "${CYAN}   Backend: http://localhost:3001${NC}"
-echo -e "${CYAN}   Frontend: http://localhost:3000${NC}"
+echo -e "${CYAN}   Frontend: http://localhost:5173${NC}"
 echo -e "${CYAN}   Ingestion: Monitoring @Crypto_Arki and @OverTradess${NC}"
 echo -e "\n${YELLOW}Press Ctrl+C to stop all services${NC}\n"
 

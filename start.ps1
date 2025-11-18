@@ -102,7 +102,7 @@ if (-not (Test-Path ".env")) {
 
 # Step 5: Start services
 Write-Host "🎯 Starting services..." -ForegroundColor Yellow
-Write-Host "   Frontend: http://localhost:3000" -ForegroundColor Cyan
+Write-Host "   Frontend: http://localhost:5173" -ForegroundColor Cyan
 Write-Host "   Backend:  http://localhost:3001" -ForegroundColor Cyan
 Write-Host ""
 Write-Host "Press Ctrl+C to stop" -ForegroundColor Yellow
