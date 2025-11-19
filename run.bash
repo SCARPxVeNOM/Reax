@@ -4,6 +4,9 @@
 
 set -e
 
+# Ensure cargo bin is in PATH
+export PATH="/usr/local/cargo/bin:$PATH"
+
 echo "🚀 Starting LineraTrade AI Buildathon Application..."
 echo ""
 
@@ -18,62 +21,264 @@ if ! command -v linera &> /dev/null; then
         cd /build/linera-app/linera-protocol
         
         # Use the Rust toolchain specified in the project
-        if [ -f "toolchains/stable/rust-toolchain.toml" ]; then
-            RUST_VERSION=$(grep -oP 'channel = "\K[^"]+' toolchains/stable/rust-toolchain.toml | head -1)
-            if [ -n "$RUST_VERSION" ]; then
-                echo "📦 Using Rust $RUST_VERSION as specified by linera-protocol..."
-                rustup install $RUST_VERSION 2>/dev/null || true
-                rustup default $RUST_VERSION 2>/dev/null || true
+        # Check for rust-toolchain.toml in root first, then toolchains/stable
+        RUST_TOOLCHAIN_FILE=""
+        if [ -f "rust-toolchain.toml" ]; then
+            RUST_TOOLCHAIN_FILE="rust-toolchain.toml"
+        elif [ -f "toolchains/stable/rust-toolchain.toml" ]; then
+            RUST_TOOLCHAIN_FILE="toolchains/stable/rust-toolchain.toml"
+        fi
+        
+        if [ -n "$RUST_TOOLCHAIN_FILE" ]; then
+            # Check if it's a symlink or has wrong content
+            if [ -L "$RUST_TOOLCHAIN_FILE" ]; then
+                echo "⚠️  rust-toolchain.toml is a symlink, resolving..."
+                RUST_TOOLCHAIN_FILE=$(readlink -f "$RUST_TOOLCHAIN_FILE" 2>/dev/null || echo "$RUST_TOOLCHAIN_FILE")
+            fi
+            
+            # Read the actual file content
+            if [ -f "$RUST_TOOLCHAIN_FILE" ] && grep -q "channel" "$RUST_TOOLCHAIN_FILE" 2>/dev/null; then
+                RUST_VERSION=$(grep -oP 'channel = "\K[^"]+' "$RUST_TOOLCHAIN_FILE" | head -1)
+                if [ -n "$RUST_VERSION" ]; then
+                    echo "📦 Using Rust $RUST_VERSION as specified by linera-protocol..."
+                    rustup install $RUST_VERSION 2>/dev/null || true
+                    rustup default $RUST_VERSION 2>/dev/null || true
+                fi
+            else
+                echo "⚠️  rust-toolchain.toml found but couldn't parse, using default Rust"
+            fi
+        fi
+        
+        # Fix problematic rust-toolchain.toml in root that might cause cargo issues
+        # If it's not a valid TOML file (e.g., just contains a path), replace it with proper content
+        if [ -f "rust-toolchain.toml" ]; then
+            # Check if it's a valid TOML file (contains [toolchain] or [toolchains])
+            if ! grep -q "^\[toolchain" rust-toolchain.toml 2>/dev/null; then
+                echo "⚠️  Found invalid rust-toolchain.toml in root, replacing with proper content..."
+                # Copy the proper one from toolchains/stable if it exists
+                if [ -f "toolchains/stable/rust-toolchain.toml" ]; then
+                    cp toolchains/stable/rust-toolchain.toml rust-toolchain.toml
+                    echo "✅ Fixed rust-toolchain.toml using toolchains/stable/rust-toolchain.toml"
+                else
+                    # Remove it if we can't fix it
+                    rm -f rust-toolchain.toml
+                    echo "⚠️  Removed invalid rust-toolchain.toml"
+                fi
             fi
         fi
         
         # Build with optimized settings to reduce memory usage
         # Use incremental compilation and limit parallel jobs to reduce memory pressure
-        export CARGO_BUILD_JOBS=2
+        # Reduce jobs to 1 to avoid OOM (Out of Memory) kills
+        export CARGO_BUILD_JOBS=1
         export CARGO_INCREMENTAL=1
-        cargo install --path linera-service --locked --features default,storage-service || {
-            echo "⚠️  Failed to build from local source, trying crates.io version 0.15.5..."
-            rustup default stable 2>/dev/null || true
-            cd /build
+        # Disable LTO and reduce optimization to save memory during compilation
+        export CARGO_PROFILE_RELEASE_LTO=false
+        export CARGO_PROFILE_RELEASE_OPT_LEVEL=2
+        # Show progress during build
+        echo "🔨 Building Linera service from local source (v0.16.0)..."
+        echo "⏳ This may take 15-30 minutes, please be patient..."
+        echo "   The build is working if you see 'Compiling...' messages"
+        echo "   DO NOT interrupt the build - let it complete!"
+        
+        # Build linera-service from local source - this MUST succeed
+        # Use tee to show progress while also logging
+        # Build with reduced memory usage: no LTO, opt-level 2, single job
+        echo "🔨 Starting build (output will be logged)..."
+        echo "💾 Using memory-optimized build settings (CARGO_BUILD_JOBS=1, no LTO)..."
+        BUILD_SUCCESS=false
+        if CARGO_BUILD_JOBS=1 CARGO_PROFILE_RELEASE_LTO=false CARGO_PROFILE_RELEASE_OPT_LEVEL=2 \
+           cargo install --path linera-service --locked --features default,storage-service 2>&1 | tee /tmp/linera-build.log; then
+            # Verify the binary actually exists
+            if [ -f "/usr/local/cargo/bin/linera" ]; then
+                echo "✅ Successfully built linera-service from local source"
+                BUILD_SUCCESS=true
+            else
+                echo "⚠️  Build reported success but binary not found, checking logs..."
+                tail -50 /tmp/linera-build.log | grep -i "error\|failed" || echo "No obvious errors in log"
+                BUILD_SUCCESS=false
+            fi
+        fi
+        
+        if [ "$BUILD_SUCCESS" = false ]; then
+            # Show the actual error
+            echo ""
+            echo "❌ Local source build failed. Checking error..."
+            ERROR_LINES=$(tail -100 /tmp/linera-build.log 2>/dev/null | grep -i "error\|failed\|panic" | tail -20 || echo "No specific errors found in log")
+            echo "$ERROR_LINES"
+            echo ""
+            echo "⚠️  Attempting alternative build methods..."
             
-            # Try installing from crates.io (template version)
-            # Use memory optimizations for crates.io build
-            export CARGO_BUILD_JOBS=2
-            export CARGO_INCREMENTAL=1
-            cargo install --locked linera-service@0.15.5 linera-storage-service@0.15.5 || {
-                echo "❌ Linera installation failed. Cannot continue."
-                exit 1
-            }
-        }
+            # Try without --locked flag
+            echo "🔄 Trying build without --locked flag..."
+            if CARGO_BUILD_JOBS=1 CARGO_PROFILE_RELEASE_LTO=false CARGO_PROFILE_RELEASE_OPT_LEVEL=2 \
+               cargo install --path linera-service --features default,storage-service 2>&1 | tee /tmp/linera-build2.log; then
+                if [ -f "/usr/local/cargo/bin/linera" ]; then
+                    echo "✅ Successfully built linera-service (without --locked)"
+                    BUILD_SUCCESS=true
+                else
+                    BUILD_SUCCESS=false
+                fi
+            fi
+            
+            if [ "$BUILD_SUCCESS" = false ]; then
+                echo "⚠️  Build without --locked also failed"
+                echo "🔄 Trying with minimal features (default only)..."
+                if CARGO_BUILD_JOBS=1 CARGO_PROFILE_RELEASE_LTO=false CARGO_PROFILE_RELEASE_OPT_LEVEL=2 \
+                   cargo install --path linera-service --features default 2>&1 | tee /tmp/linera-build3.log; then
+                    if [ -f "/usr/local/cargo/bin/linera" ]; then
+                        echo "✅ Successfully built linera-service (minimal features)"
+                        BUILD_SUCCESS=true
+                    else
+                        BUILD_SUCCESS=false
+                    fi
+                fi
+                
+                if [ "$BUILD_SUCCESS" = false ]; then
+                    echo "⚠️  Minimal features build failed"
+                    echo "🔄 Trying with just wasmer feature..."
+                    if CARGO_BUILD_JOBS=1 CARGO_PROFILE_RELEASE_LTO=false CARGO_PROFILE_RELEASE_OPT_LEVEL=2 \
+                       cargo install --path linera-service --features wasmer 2>&1 | tee /tmp/linera-build4.log; then
+                        if [ -f "/usr/local/cargo/bin/linera" ]; then
+                            echo "✅ Successfully built linera-service (wasmer only)"
+                            BUILD_SUCCESS=true
+                        else
+                            BUILD_SUCCESS=false
+                        fi
+                    fi
+                    
+                    if [ "$BUILD_SUCCESS" = false ]; then
+                        echo "❌ All local source build attempts failed"
+                        echo "⚠️  Falling back to crates.io version 0.15.5..."
+                        rustup default stable 2>/dev/null || true
+                        cd /build
+                        
+                        # Try installing from crates.io (template version)
+                        echo "📦 Installing linera-storage-service@0.15.5 from crates.io..."
+                        export CARGO_BUILD_JOBS=1
+                        export CARGO_INCREMENTAL=1
+                        export CARGO_PROFILE_RELEASE_LTO=false
+                        export CARGO_PROFILE_RELEASE_OPT_LEVEL=2
+                        cargo install --locked linera-storage-service@0.15.5 2>&1 | tee /tmp/storage-build.log || {
+                            echo "⚠️  linera-storage-service installation failed, but continuing..."
+                        }
+                        
+                        echo "📦 Installing linera-service@0.15.5 from crates.io..."
+                        if CARGO_BUILD_JOBS=1 CARGO_PROFILE_RELEASE_LTO=false CARGO_PROFILE_RELEASE_OPT_LEVEL=2 \
+                           cargo install --locked linera-service@0.15.5 2>&1 | tee /tmp/crates-build.log; then
+                            echo "✅ Successfully installed linera-service@0.15.5 from crates.io"
+                        else
+                            echo "⚠️  Failed with --locked, trying without --locked..."
+                            if CARGO_BUILD_JOBS=1 CARGO_PROFILE_RELEASE_LTO=false CARGO_PROFILE_RELEASE_OPT_LEVEL=2 \
+                               cargo install linera-service@0.15.5 2>&1 | tee /tmp/crates-build2.log; then
+                                echo "✅ Successfully installed linera-service@0.15.5 (without --locked)"
+                            else
+                                echo "❌ All installation methods failed."
+                                echo "📋 Last 30 lines of error from crates.io build:"
+                                tail -30 /tmp/crates-build2.log 2>/dev/null || tail -30 /tmp/crates-build.log 2>/dev/null
+                                echo ""
+                                echo "💡 Suggestion: The local source build (v0.16.0) was working."
+                                echo "   Consider using that version instead of 0.15.5"
+                                exit 1
+                            fi
+                        fi
+                    fi
+                fi
+            fi
+        fi
         rustup default stable 2>/dev/null || true
-        cd /build
+            cd /build
+        
+        # Verify linera command is available
+        if ! command -v linera &> /dev/null; then
+            echo "⚠️  linera command not found after build, checking installation..."
+            # Check if it's in cargo bin
+            if [ -f "/usr/local/cargo/bin/linera" ]; then
+                echo "✅ Found linera at /usr/local/cargo/bin/linera"
+                export PATH="/usr/local/cargo/bin:$PATH"
+            else
+                echo "❌ linera binary not found after build"
+                exit 1
+            fi
+        fi
     else
         # No local source, install from crates.io (template version)
         echo "📦 Installing Linera from crates.io (version 0.15.5 to match template)..."
+        echo "⏳ This may take 15-30 minutes, please be patient..."
         # Use memory optimizations for crates.io build
-        export CARGO_BUILD_JOBS=2
+        export CARGO_BUILD_JOBS=1
         export CARGO_INCREMENTAL=1
-        cargo install --locked linera-service@0.15.5 linera-storage-service@0.15.5 || {
-            echo "⚠️  Failed to install from crates.io, trying nightly Rust..."
-            rustup install nightly 2>/dev/null || true
-            rustup default nightly 2>/dev/null || true
-            export CARGO_BUILD_JOBS=2
-            export CARGO_INCREMENTAL=1
-            cargo install --locked linera-service@0.15.5 linera-storage-service@0.15.5 || {
-                echo "❌ Linera installation failed. Cannot continue."
-                exit 1
-            }
-            rustup default stable 2>/dev/null || true
+        export CARGO_PROFILE_RELEASE_LTO=false
+        export CARGO_PROFILE_RELEASE_OPT_LEVEL=2
+        
+        # Install separately for better error handling
+        echo "📦 Installing linera-storage-service@0.15.5..."
+        CARGO_BUILD_JOBS=1 CARGO_PROFILE_RELEASE_LTO=false CARGO_PROFILE_RELEASE_OPT_LEVEL=2 \
+        cargo install --locked linera-storage-service@0.15.5 || {
+            echo "⚠️  linera-storage-service installation failed, but continuing..."
         }
+        
+        echo "📦 Installing linera-service@0.15.5..."
+        if CARGO_BUILD_JOBS=1 CARGO_PROFILE_RELEASE_LTO=false CARGO_PROFILE_RELEASE_OPT_LEVEL=2 \
+           cargo install --locked linera-service@0.15.5 2>&1 | tee /tmp/crates-service.log; then
+            echo "✅ Successfully installed linera-service@0.15.5 from crates.io"
+        else
+            echo "⚠️  Failed with --locked, trying without --locked..."
+            if CARGO_BUILD_JOBS=1 CARGO_PROFILE_RELEASE_LTO=false CARGO_PROFILE_RELEASE_OPT_LEVEL=2 \
+               cargo install linera-service@0.15.5 2>&1 | tee /tmp/crates-service2.log; then
+                echo "✅ Successfully installed linera-service@0.15.5 (without --locked)"
+            else
+                echo "⚠️  Failed to install from crates.io, trying nightly Rust..."
+                rustup install nightly 2>/dev/null || true
+                rustup default nightly 2>/dev/null || true
+                export CARGO_BUILD_JOBS=1
+                export CARGO_INCREMENTAL=1
+                export CARGO_PROFILE_RELEASE_LTO=false
+                export CARGO_PROFILE_RELEASE_OPT_LEVEL=2
+                if CARGO_BUILD_JOBS=1 CARGO_PROFILE_RELEASE_LTO=false CARGO_PROFILE_RELEASE_OPT_LEVEL=2 \
+                   cargo install linera-service@0.15.5 2>&1 | tee /tmp/crates-service3.log; then
+                    echo "✅ Successfully installed linera-service@0.15.5 (with nightly)"
+                else
+                    echo "❌ All crates.io installation methods failed."
+                    echo "📋 Last 50 lines of error:"
+                    tail -50 /tmp/crates-service3.log 2>/dev/null || tail -50 /tmp/crates-service2.log 2>/dev/null || tail -50 /tmp/crates-service.log 2>/dev/null
+                    echo ""
+                    echo "💡 Since local source build was working, consider using that instead."
+                    exit 1
+                fi
+                rustup default stable 2>/dev/null || true
+            fi
+        fi
     fi
     
-    # Verify installation
+    # Verify installation - ensure PATH includes cargo bin
+    export PATH="/usr/local/cargo/bin:$PATH"
+    
+    # Wait a moment for PATH to update
+    sleep 1
+    
     if command -v linera &> /dev/null; then
         echo "✅ Linera CLI installed successfully"
         linera --version || true
     else
-        echo "❌ Linera CLI installation failed. Cannot continue."
-        exit 1
+        # Try to find it manually
+        if [ -f "/usr/local/cargo/bin/linera" ]; then
+            echo "✅ Found linera binary, adding to PATH"
+            export PATH="/usr/local/cargo/bin:$PATH"
+            if command -v linera &> /dev/null; then
+                linera --version || true
+            else
+                echo "⚠️  linera found but not executable, trying direct path..."
+                /usr/local/cargo/bin/linera --version || true
+            fi
+        else
+            echo "❌ Linera CLI installation failed. Cannot continue."
+            echo "   Searched in: /usr/local/cargo/bin"
+            echo "   Current PATH: $PATH"
+            echo "   Listing /usr/local/cargo/bin:"
+            ls -la /usr/local/cargo/bin/ | grep linera || echo "   No linera files found"
+            exit 1
+        fi
     fi
 fi
 
@@ -86,10 +291,10 @@ if ! linera net up --testing-prng-seed 37 2>&1; then
         echo "✅ Linera network is already running"
     else
         echo "❌ Linera network failed to start. Retrying..."
-        linera net up --testing-prng-seed 37 || {
+linera net up --testing-prng-seed 37 || {
             echo "❌ Failed to start Linera network after retry"
             exit 1
-        }
+}
     fi
 fi
 
@@ -116,7 +321,7 @@ if [ "$PORT_IN_USE" = true ]; then
     LINERA_PID=""
 else
     linera service --port 8080 > /tmp/linera-service.log 2>&1 &
-    LINERA_PID=$!
+LINERA_PID=$!
     echo "📝 Linera service PID: $LINERA_PID"
 fi
 
