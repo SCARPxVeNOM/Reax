@@ -1,4 +1,4 @@
-# 🚀 LineraTrade AI - Complete Platform Documentation
+# 🚀 ReaX - Complete Platform Documentation
 
 **A next-generation decentralized trading platform built on Linera microchains**
 
