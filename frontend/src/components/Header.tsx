@@ -1,7 +1,5 @@
 'use client';
 
-import { useAuth } from './AuthProvider';
-import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 
 interface HeaderProps {
@@ -10,32 +8,18 @@ interface HeaderProps {
 }
 
 export function Header({ isConnected, onSearch }: HeaderProps) {
-  const { user, signOut } = useAuth();
-  const router = useRouter();
   const [showDropdown, setShowDropdown] = useState(false);
 
-  const handleSignOut = async () => {
-    await signOut();
-    router.push('/auth/signin');
-  };
-
   const getUserInitials = () => {
-    if (user?.user_metadata?.full_name) {
-      const names = user.user_metadata.full_name.split(' ');
-      return names.map(n => n[0]).join('').toUpperCase().slice(0, 2);
-    }
-    if (user?.email) {
-      return user.email[0].toUpperCase();
-    }
-    return 'U';
+    return 'TR';
   };
 
   const getUserName = () => {
-    return user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'User';
+    return 'Trader';
   };
 
   const getUserRole = () => {
-    return user?.user_metadata?.role || 'Trader';
+    return 'Trader';
   };
 
   return (
@@ -116,10 +100,10 @@ export function Header({ isConnected, onSearch }: HeaderProps) {
               </a>
               <hr className="my-1" />
               <button
-                onClick={handleSignOut}
-                className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100"
+                onClick={() => setShowDropdown(false)}
+                className="block w-full text-left px-4 py-2 text-sm text-gray-600 hover:bg-gray-100"
               >
-                Sign out
+                Settings
               </button>
             </div>
           )}

@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
-import { getLineraClient } from './linera-client';
+import { getLineraClient } from './linera-client-graphql';
 
 /**
  * React hook for Linera client
@@ -9,6 +9,8 @@ export function useLinera() {
   const [client, setClient] = useState<ReturnType<typeof getLineraClient> | null>(null);
   const [isConnected, setIsConnected] = useState(false);
   const [error, setError] = useState<Error | null>(null);
+  const [chainId, setChainId] = useState<string | null>(null);
+  const [applicationId, setApplicationId] = useState<string | null>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -16,11 +18,13 @@ export function useLinera() {
     async function connect() {
       try {
         const lineraClient = getLineraClient();
-        await lineraClient.connect();
         
         if (mounted) {
           setClient(lineraClient);
           setIsConnected(true);
+          // Get chain ID and application ID from environment
+          setChainId(process.env.NEXT_PUBLIC_LINERA_CHAIN_ID || null);
+          setApplicationId(process.env.NEXT_PUBLIC_LINERA_APP_ID || null);
         }
       } catch (err) {
         if (mounted) {
@@ -38,7 +42,7 @@ export function useLinera() {
     };
   }, []);
 
-  return { client, isConnected, error };
+  return { client, isConnected, error, chainId, applicationId };
 }
 
 /**

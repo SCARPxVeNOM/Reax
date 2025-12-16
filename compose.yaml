@@ -1,45 +1,25 @@
-# Linera Buildathon Template - Docker Compose Configuration
-# Based on https://github.com/linera-io/buildathon-template
-
 services:
-  app:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: lineratrade-buildathon
-    # Memory limit - increase if build fails with SIGKILL (Out of Memory)
-    # Recommended: 6G-8G for faster builds, 4G minimum for single-threaded builds
-    deploy:
-      resources:
-        limits:
-          memory: 6G
-        reservations:
-          memory: 3G
+  lineratrade:
+    build: .
+    container_name: lineratrade-platform
     ports:
-      - "5173:5173"   # Frontend (Next.js)
-      - "8080:8080"   # Linera faucet
-      - "9001:9001"   # Validator proxy
-      - "13001:13001" # Validator
+      - "3000:3000"   # Frontend (Next.js)
+      - "3001:3001"   # Backend (Express)
+      - "8080:8080"   # Linera Faucet
+      - "8081:8081"   # Linera GraphQL Service
     volumes:
       - .:/build
-      - linera_data:/data
-    working_dir: /build
-    command: /bin/bash run.bash
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:5173/"]
-      interval: 10s
-      timeout: 5s
-      start_period: 30s
-      retries: 3
+      - /build/node_modules
+      - /build/frontend/node_modules
+      - /build/backend/node_modules
+      - /build/target
     environment:
-      - NODE_ENV=production
-      - NEXT_PUBLIC_API_URL=http://localhost:3001
-      - LINERA_RPC_URL=http://localhost:8080
-
-volumes:
-  linera_data:
+      - NODE_ENV=development
+      - RUST_LOG=info
+    networks:
+      - lineratrade-network
+    restart: unless-stopped
 
 networks:
-  default:
-    name: lineratrade-network
-
+  lineratrade-network:
+    driver: bridge

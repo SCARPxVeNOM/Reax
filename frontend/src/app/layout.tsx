@@ -2,13 +2,13 @@ import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import './globals.css'
 import { LineraProvider } from '../components/LineraProvider'
-import { AuthProvider } from '../components/AuthProvider'
+import { Navigation } from '../components/Navigation'
 
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'ReaX',
-  description: 'AI-powered trading infrastructure on Linera microchains',
+  title: 'LineraTrade AI - Advanced Trading Platform',
+  description: 'Multi-DEX trading, PineScript strategies, and social trading on Linera microchains',
 }
 
 export default function RootLayout({
@@ -22,11 +22,10 @@ export default function RootLayout({
         {/* Linera service runs on port 8080 and provides GraphQL API */}
       </head>
       <body className={inter.className}>
-        <AuthProvider>
-          <LineraProvider>
-            {children}
-          </LineraProvider>
-        </AuthProvider>
+        <LineraProvider>
+          <Navigation />
+          {children}
+        </LineraProvider>
       </body>
     </html>
   )

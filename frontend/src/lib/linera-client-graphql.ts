@@ -229,3 +229,6 @@ export function getLineraClient(): LineraGraphQLClient {
   return lineraClient;
 }
 
+// Export singleton for direct use
+export const lineraClient = new LineraGraphQLClient();
+
