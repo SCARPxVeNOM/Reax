@@ -46,78 +46,7 @@ A complete trading platform with:
 
 ---
 
-## 📚 Documentation Hub
 
-### 🚀 Quick Start Guides (Start Here!)
-
-| Guide | Description | Time | Best For |
-|-------|-------------|------|----------|
-| **[🚀_START_NOW.md](🚀_START_NOW.md)** ⭐ | Visual quick start | 2 min | Everyone |
-| **[YOU_ARE_HERE.md](YOU_ARE_HERE.md)** | Quick orientation | 2 min | First-time users |
-| **[START_HERE.md](START_HERE.md)** | Quick start options | 2 min | All users |
-| **[📚_DOCUMENTATION_INDEX.md](📚_DOCUMENTATION_INDEX.md)** | Complete guide index | 5 min | Finding specific info |
-
-### 🐳 Docker & Platform Setup
-
-| Guide | Description | Time | Best For |
-|-------|-------------|------|----------|
-| **[DOCKER_QUICKSTART.md](DOCKER_QUICKSTART.md)** | Docker-specific guide | 5 min | Docker users |
-| **[WINDOWS_QUICKSTART.md](WINDOWS_QUICKSTART.md)** | Windows setup (3 methods) | 5 min | Windows users |
-| **[PLATFORM_SETUP.md](PLATFORM_SETUP.md)** | Complete setup instructions | 15 min | Detailed setup |
-| **[README_DOCKER_SETUP.md](README_DOCKER_SETUP.md)** | Docker configuration | 10 min | Docker details |
-| **[COMPLETE_SETUP_SUMMARY.md](COMPLETE_SETUP_SUMMARY.md)** | Setup overview | 10 min | Setup reference |
-
-### 📖 Main Documentation
-
-| Guide | Description | Time | Best For |
-|-------|-------------|------|----------|
-| **[README.md](README.md)** | Main project documentation | 10 min | Complete overview |
-| **[FINAL_PROJECT_SUMMARY.md](FINAL_PROJECT_SUMMARY.md)** | Complete project overview | 15 min | Understanding everything |
-| **[TRADING_PLATFORM_README.md](TRADING_PLATFORM_README.md)** | Platform features | 10 min | Feature details |
-
-### 🧪 Testing & Verification
-
-| Guide | Description | Time | Best For |
-|-------|-------------|------|----------|
-| **[TESTING_GUIDE.md](TESTING_GUIDE.md)** | Testing procedures | 10 min | Testing features |
-| **[READY_TO_RUN_CHECKLIST.md](READY_TO_RUN_CHECKLIST.md)** | Pre-flight checklist | 5 min | Verification |
-| **[QUICK_START.md](QUICK_START.md)** | Quick reference | 5 min | Quick testing |
-
-### 📊 Status & Progress
-
-| Guide | Description | Time | Best For |
-|-------|-------------|------|----------|
-| **[PROJECT_STATUS.md](PROJECT_STATUS.md)** | 100% completion status | 10 min | Current status |
-| **[SESSION_COMPLETE.md](SESSION_COMPLETE.md)** | Latest session summary | 5 min | Recent changes |
-| **[PLATFORM_RUNNING.md](PLATFORM_RUNNING.md)** | Running verification | 5 min | Startup status |
-| **[ALL_DONE.md](ALL_DONE.md)** | Completion summary | 2 min | Quick status |
-| **[FINAL_SUMMARY.md](FINAL_SUMMARY.md)** | Final overview | 10 min | Complete summary |
-
-### 🏗️ Architecture & Implementation
-
-| Guide | Description | Time | Best For |
-|-------|-------------|------|----------|
-| **[ARCHITECTURE_DIAGRAM.md](ARCHITECTURE_DIAGRAM.md)** | System architecture | 10 min | Understanding design |
-| **[IMPLEMENTATION_STATUS.md](IMPLEMENTATION_STATUS.md)** | Implementation details | 10 min | Technical details |
-| **[IMPLEMENTATION_COMPLETE.md](IMPLEMENTATION_COMPLETE.md)** | Backend implementation | 10 min | Backend details |
-| **[IMPLEMENTATION_PROGRESS.md](IMPLEMENTATION_PROGRESS.md)** | Progress tracking | 5 min | Development history |
-
-### ⛓️ Linera Integration
-
-| Guide | Description | Time | Best For |
-|-------|-------------|------|----------|
-| **[REAL_TIME_LINERA_INTEGRATION_COMPLETE.md](REAL_TIME_LINERA_INTEGRATION_COMPLETE.md)** | Real-time integration | 10 min | Linera features |
-| **[FRONTEND_LINERA_INTEGRATION_STATUS.md](FRONTEND_LINERA_INTEGRATION_STATUS.md)** | Frontend integration | 10 min | Frontend Linera |
-| **[FRONTEND_FEATURES_COMPLETE.md](FRONTEND_FEATURES_COMPLETE.md)** | Frontend features | 10 min | UI features |
-
-### 🔧 Fixes & Changes
-
-| Guide | Description | Time | Best For |
-|-------|-------------|------|----------|
-| **[FIXES_APPLIED.md](FIXES_APPLIED.md)** | Bug fixes | 5 min | Issue resolution |
-| **[AUTH_REMOVAL_COMPLETE.md](AUTH_REMOVAL_COMPLETE.md)** | Auth removal | 5 min | Auth changes |
-
----
 
 ## 🌐 Service Endpoints
 
@@ -283,22 +212,6 @@ After startup, access these services:
 - **Implementation Records**: 5
 
 ---
-
-## 🚀 Installation & Setup
-
-### Prerequisites
-
-#### For Docker (Easiest)
-- Docker Desktop
-- 8GB RAM minimum
-- 10GB disk space
-
-#### For Manual Setup
-- Rust 1.86+
-- Linera CLI 0.15.6
-- Node.js LTS
-- PostgreSQL 14+
-- 8GB RAM minimum
 
 ### Quick Installation
 
@@ -501,28 +414,7 @@ All features implemented, tested, and documented!
 **Want to start now?**
 → Run: `docker compose up -d --build`
 
-**Need Docker guide?**
-→ Read: **[DOCKER_QUICKSTART.md](DOCKER_QUICKSTART.md)**
 
-**On Windows?**
-→ Read: **[WINDOWS_QUICKSTART.md](WINDOWS_QUICKSTART.md)**
-
-**Want complete docs?**
-→ Read: **[README.md](README.md)**
-
-**Need detailed setup?**
-→ Read: **[PLATFORM_SETUP.md](PLATFORM_SETUP.md)**
-
-**Want to test?**
-→ Read: **[TESTING_GUIDE.md](TESTING_GUIDE.md)**
-
-**Want overview?**
-→ Read: **[FINAL_PROJECT_SUMMARY.md](FINAL_PROJECT_SUMMARY.md)**
-
-**Need to find something?**
-→ Read: **[📚_DOCUMENTATION_INDEX.md](📚_DOCUMENTATION_INDEX.md)**
-
----
 
 ## 🎊 You're Ready!
 
@@ -539,7 +431,6 @@ docker compose up -d --build
 
 ---
 
-## 📞 Support
 
 ### Quick Commands
 
@@ -563,14 +454,6 @@ docker compose ps
 curl http://localhost:3001/health
 ```
 
-### Documentation
-
-- **Quick Start**: 🚀_START_NOW.md
-- **Orientation**: YOU_ARE_HERE.md
-- **Main Docs**: README.md
-- **Setup Guide**: PLATFORM_SETUP.md
-- **Testing**: TESTING_GUIDE.md
-- **Index**: 📚_DOCUMENTATION_INDEX.md
 
 ### Troubleshooting
 
