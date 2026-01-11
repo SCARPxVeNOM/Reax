@@ -3,13 +3,17 @@ resolver = "2"
 members = ["abi", "trade-ai"]
 
 [workspace.dependencies]
-linera-sdk = { version = "0.15.6" }
+linera-sdk = { version = "0.15.7" }
 async-graphql = { version = "=7.0.17", default-features = false }
+async-graphql-derive = { version = "=7.0.17" }
+async-graphql-value = { version = "=7.0.17" }
+async-graphql-parser = { version = "=7.0.17" }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = { version = "1.0" }
 bcs = { version = "0.1" }
 thiserror = { version = "1.0" }
 async-trait = { version = "0.1" }
+tokio = { version = "1.40", features = ["rt", "sync"] }
 abi = { path = "./abi" }
 
 [profile.release]

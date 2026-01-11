@@ -176,8 +176,9 @@ After startup, access these services:
 - **Platform**: Linera Protocol
 - **Language**: Rust
 - **Target**: WASM32
-- **SDK**: Linera SDK 0.15.6
+- **SDK**: Linera SDK 0.15.7 (Testnet Conway)
 - **Toolchain**: Rust 1.86
+- **Network**: Testnet Conway
 
 ### DEX Integration
 - **Raydium**: Transaction API

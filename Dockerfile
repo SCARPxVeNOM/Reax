@@ -14,7 +14,7 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Linera tools
-RUN cargo install --locked linera-service@0.15.6 linera-storage-service@0.15.6
+RUN cargo install --locked linera-service@0.15.7 linera-storage-service@0.15.7
 
 # Install Node.js and pnpm
 RUN curl -fsSL https://deb.nodesource.com/setup_lts.x | bash - \
