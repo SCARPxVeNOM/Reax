@@ -1,8 +1,10 @@
 # LineraTrade AI - Windows PowerShell Startup Script
+# Testnet Conway Configuration
 # Run this script to start the complete platform
 
 Write-Host "=========================================" -ForegroundColor Cyan
 Write-Host "  LineraTrade AI Platform Startup" -ForegroundColor Cyan
+Write-Host "  Network: Testnet Conway" -ForegroundColor Cyan
 Write-Host "=========================================" -ForegroundColor Cyan
 Write-Host ""
 
@@ -11,6 +13,10 @@ $FAUCET_PORT = 8080
 $LINERA_SERVICE_PORT = 8081
 $BACKEND_PORT = 3001
 $FRONTEND_PORT = 3000
+
+# Testnet Conway Configuration
+$LINERA_NETWORK = "testnet-conway"
+$TESTNET_FAUCET_URL = "https://faucet.testnet-conway.linera.net/"
 
 # Check if Linera is installed
 Write-Host "🔍 Checking Linera installation..." -ForegroundColor Yellow
@@ -23,8 +29,8 @@ if (-not $lineraInstalled) {
 Write-Host "✅ Linera is installed" -ForegroundColor Green
 Write-Host ""
 
-# Start Linera Network
-Write-Host "🚀 Starting Linera network..." -ForegroundColor Yellow
+# Start Linera Network (Local for development)
+Write-Host "🚀 Starting local Linera network..." -ForegroundColor Yellow
 $env:LINERA_TMP_DIR = "$env:TEMP\linera-$(Get-Random)"
 New-Item -ItemType Directory -Force -Path $env:LINERA_TMP_DIR | Out-Null
 
@@ -85,6 +91,8 @@ Write-Host ""
 # Configure Backend
 Write-Host "⚙️  Configuring backend..." -ForegroundColor Yellow
 @"
+LINERA_NETWORK=$LINERA_NETWORK
+LINERA_FAUCET_URL=$TESTNET_FAUCET_URL
 LINERA_SERVICE_URL=http://localhost:$LINERA_SERVICE_PORT
 LINERA_APP_ID=$TRADE_AI_APP_ID
 LINERA_CHAIN_ID=$DEFAULT_CHAIN_ID
@@ -101,6 +109,8 @@ Write-Host "⚙️  Configuring frontend..." -ForegroundColor Yellow
 NEXT_PUBLIC_LINERA_APP_ID=$TRADE_AI_APP_ID
 NEXT_PUBLIC_LINERA_CHAIN_ID=$DEFAULT_CHAIN_ID
 NEXT_PUBLIC_LINERA_SERVICE_URL=http://localhost:$LINERA_SERVICE_PORT
+NEXT_PUBLIC_LINERA_NETWORK=$LINERA_NETWORK
+NEXT_PUBLIC_LINERA_FAUCET_URL=$TESTNET_FAUCET_URL
 NEXT_PUBLIC_API_URL=http://localhost:$BACKEND_PORT
 NEXT_PUBLIC_WS_URL=http://localhost:$BACKEND_PORT
 "@ | Out-File -FilePath "frontend\.env.local" -Encoding UTF8

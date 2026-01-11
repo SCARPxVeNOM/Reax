@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # LineraTrade AI - Complete Platform Startup Script
+# Testnet Conway Configuration
 set -eu
 
 # Port Configuration
@@ -9,16 +10,21 @@ BACKEND_PORT=3001
 FRONTEND_PORT=3000
 LINERA_MAX_PENDING_MESSAGES=100
 
+# Testnet Conway Configuration
+LINERA_NETWORK="testnet-conway"
+TESTNET_FAUCET_URL="https://faucet.testnet-conway.linera.net/"
+
 echo "========================================="
 echo "  LineraTrade AI Platform Startup"
+echo "  Network: Testnet Conway"
 echo "========================================="
 echo ""
 
 # Setup PATH
 export PATH="$PWD/target/debug:$PATH"
 
-# Start Linera Network
-echo "🚀 Starting Linera network..."
+# Start Linera Network (Local for development)
+echo "🚀 Starting local Linera network..."
 source /dev/stdin <<<"$(linera net helper 2>/dev/null)"
 linera_spawn linera net up --initial-amount 1000000000000 --with-faucet --faucet-port $FAUCET_PORT --faucet-amount 1000000000
 
@@ -95,6 +101,9 @@ sleep 5
 # Configure Backend Environment
 echo "⚙️  Configuring backend environment..."
 cat > backend/.env.local << EOF
+# Linera Configuration - Testnet Conway
+LINERA_NETWORK=$LINERA_NETWORK
+LINERA_FAUCET_URL=$TESTNET_FAUCET_URL
 LINERA_SERVICE_URL=http://localhost:$LINERA_SERVICE_PORT
 LINERA_APP_ID=$TRADE_AI_APP_ID
 LINERA_CHAIN_ID=$DEFAULT_CHAIN_ID
@@ -128,7 +137,8 @@ cat > frontend/.env.local << EOF
 NEXT_PUBLIC_LINERA_APP_ID=$TRADE_AI_APP_ID
 NEXT_PUBLIC_LINERA_CHAIN_ID=$DEFAULT_CHAIN_ID
 NEXT_PUBLIC_LINERA_SERVICE_URL=http://localhost:$LINERA_SERVICE_PORT
-NEXT_PUBLIC_LINERA_NETWORK=local
+NEXT_PUBLIC_LINERA_NETWORK=$LINERA_NETWORK
+NEXT_PUBLIC_LINERA_FAUCET_URL=$TESTNET_FAUCET_URL
 NEXT_PUBLIC_API_URL=http://localhost:$BACKEND_PORT
 NEXT_PUBLIC_WS_URL=http://localhost:$BACKEND_PORT
 EOF
