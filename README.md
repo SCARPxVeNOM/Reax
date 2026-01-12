@@ -2,7 +2,7 @@
 
 **A next-generation decentralized trading platform built on Linera microchains**
 
-**Status**: ✅ **PRODUCTION READY** | **Version**: 2.1.0 | **Date**: December 16, 2024
+**Status**: ✅ **PRODUCTION READY** | **Version**: 2.2.0 | **Date**: January 11, 2026
 
 ---
 
@@ -35,14 +35,16 @@ chmod +x run.bash
 
 A complete trading platform with:
 
-- ✅ **Linera Microchains** - Decentralized blockchain infrastructure
-- ✅ **Multi-DEX Trading** - Raydium, Jupiter, Binance integration
-- ✅ **PineScript Interpreter** - Full TradingView v5 compatibility
-- ✅ **Visual Strategy Builder** - Drag-and-drop block-based design
-- ✅ **Social Trading** - Follow and replicate top strategies
-- ✅ **Real-Time Updates** - WebSocket notifications
-- ✅ **Analytics Dashboard** - Live metrics and performance tracking
-- ✅ **6 Feature-Rich Pages** - Complete user interface
+- ✅ **Linera Microchains** - Decentralized blockchain infrastructure (SDK 0.15.7)
+- ✅ **Multi-DEX Trading** - Raydium, Jupiter, Binance integration with intelligent routing
+- ✅ **PineScript Interpreter** - Full TradingView v5 compatibility with backtesting
+- ✅ **Visual Strategy Builder** - Drag-and-drop block-based design with React Flow
+- ✅ **Social Trading** - Follow and replicate top strategies with automatic trade replication
+- ✅ **Real-Time Updates** - WebSocket notifications and live price feeds
+- ✅ **Analytics Dashboard** - Live metrics, performance tracking, and event streaming
+- ✅ **Professional UI** - Modern glass morphism design with dark theme
+- ✅ **6 Feature-Rich Pages** - Complete user interface with 28+ components
+- ✅ **Multi-Channel Notifications** - In-app, email, and webhook support
 
 ---
 
@@ -74,6 +76,30 @@ After startup, access these services:
 
 ---
 
+## 🆕 Recent Updates (v2.2.0)
+
+### UI Enhancements (January 2026)
+- ✨ **Professional Design System**: Glass morphism with dark theme
+- 🎨 **Animated Backgrounds**: Pulsing gradient orbs for visual depth
+- 📊 **Live Price Ticker**: Real-time price updates on homepage
+- 🔔 **Enhanced Components**: 28+ reusable React components
+- 💫 **Smooth Animations**: CSS-based animations for better performance
+- 📱 **Improved UX**: Better visual hierarchy and user feedback
+
+### Linera SDK Update (December 2024)
+- 🔄 **SDK 0.15.7**: Updated for Testnet Conway compatibility
+- 🌐 **Testnet Conway**: Full support for latest Linera testnet
+- 📦 **Dependency Updates**: Explicit async-graphql and tokio versions
+- 🐳 **Docker Updates**: Updated Linera installation in Dockerfile
+
+### Feature Additions
+- 🔔 **Multi-Channel Notifications**: In-app, email, and webhook support
+- 🧭 **Intelligent DEX Router**: Parallel quote fetching and best price selection
+- 📈 **Enhanced Analytics**: Live metrics, performance tracking, recent trades feed
+- 🔄 **Improved Social Trading**: Better trade replication and follower management
+
+---
+
 ## 🎯 Key Features
 
 ### 🔗 Linera Microchains
@@ -81,15 +107,19 @@ After startup, access these services:
 - Immutable strategy storage
 - On-chain trade execution
 - Cross-chain communication
-- SDK 0.15.6 integration
+- **SDK 0.15.7 integration** (Testnet Conway compatible)
+- GraphQL API for queries and mutations
+- Automatic state management and replication
 
 ### 💱 Multi-DEX Integration
 - **Raydium**: Solana's leading AMM (Transaction API)
 - **Jupiter**: Best price aggregation (API v6)
 - **Binance**: Centralized exchange (REST + WebSocket)
-- Real-time quote comparison
+- **Intelligent DEX Router**: Parallel quote fetching from multiple DEXes
+- Real-time quote comparison with best price selection
 - Automatic best route selection
-- Parallel quote fetching
+- Support for base-in and base-out swaps
+- Versioned transaction support for Solana
 
 ### 📊 Strategy Development
 - **PineScript v5 Interpreter**: Full TradingView compatibility
@@ -102,19 +132,22 @@ After startup, access these services:
   - Code generator (PineScript + TypeScript)
 
 ### 👥 Social Trading
-- Strategy marketplace
+- Strategy marketplace with performance metrics
 - Follow top-performing strategies
-- Automatic trade replication
-- Proportional position sizing
-- Risk management controls
+- **Automatic trade replication** with proportional scaling
+- Proportional position sizing based on allocation percentage
+- Risk management controls (max position size, auto-follow)
 - Real-time notifications via WebSocket
+- On-chain follower tracking and trade replication status
 
 ### 📈 Analytics Dashboard
-- Live price feeds
-- Strategy performance metrics
-- Real-time event streaming
-- Portfolio analytics
-- Performance tracking
+- **Live price ticker** with real-time updates
+- Strategy performance metrics and statistics
+- Real-time event streaming via WebSocket
+- Portfolio analytics and tracking
+- Performance charts and visualizations
+- Recent trades feed with profit indicators
+- Key metrics cards (strategies, volume, DEXes, traders, success rate)
 
 ---
 
@@ -159,18 +192,22 @@ After startup, access these services:
 - **Framework**: Next.js 14 (App Router)
 - **Language**: TypeScript
 - **UI**: React 18, Tailwind CSS
+- **Design System**: Glass morphism, dark theme, animated backgrounds
 - **Real-time**: Socket.io Client
 - **Charts**: Recharts
 - **Editor**: Monaco Editor (VS Code)
-- **Flow**: React Flow
+- **Flow**: React Flow (for visual strategy builder)
+- **Components**: 28+ reusable components
 
 ### Backend
 - **Runtime**: Node.js
 - **Framework**: Express.js
 - **Language**: TypeScript
-- **WebSocket**: Socket.io
+- **WebSocket**: Socket.io (real-time updates)
 - **Database**: PostgreSQL
 - **ORM**: Custom repositories
+- **Services**: DEX Router, PineScript Service, Notification Service, WebSocket Server
+- **Multi-Channel Notifications**: In-app, email, webhook support
 
 ### Blockchain
 - **Platform**: Linera Protocol
@@ -197,13 +234,14 @@ After startup, access these services:
 
 ### Features
 - **Pages**: 6 (Home, Trading, Strategies, Social, Microchains, Analytics)
-- **Components**: 5 major UI components
-- **API Routes**: 4 route groups
-- **Services**: 7 backend services
+- **Components**: 28+ React components (Visual Builder, Trading Interface, Analytics, etc.)
+- **API Routes**: 4 route groups (DEX, PineScript, Strategies, Visual Strategy)
+- **Services**: 7 backend services (DEX Router, PineScript, Notifications, WebSocket, etc.)
 - **DEX Integrations**: 3 (Raydium, Jupiter, Binance)
+- **UI Enhancements**: Professional glass morphism design, animated backgrounds, live tickers
 
 ### Documentation
-- **Total Guides**: 22
+- **Total Guides**: 24+ comprehensive guides
 - **Quick Starts**: 3
 - **Platform Guides**: 2
 - **Main Docs**: 3
@@ -211,6 +249,7 @@ After startup, access these services:
 - **Status Reports**: 5
 - **Architecture Docs**: 2
 - **Implementation Records**: 5
+- **Update Guides**: Linera SDK 0.15.7 migration, UI enhancements
 
 ---
 
@@ -361,7 +400,7 @@ lineratrade/
 ├── frontend/              # Next.js application
 │   ├── src/
 │   │   ├── app/          # App router pages (6 pages)
-│   │   ├── components/   # React components (5 major)
+│   │   ├── components/   # React components (28+ components)
 │   │   └── lib/          # Utilities and clients
 │   └── package.json
 ├── backend/              # Express.js API
@@ -386,7 +425,7 @@ lineratrade/
 ├── compose.yaml          # Docker Compose config
 ├── run.bash              # Linux/macOS startup
 ├── start-platform.ps1    # Windows startup
-└── *.md                  # Documentation (22 files)
+└── *.md                  # Documentation (24+ files)
 ```
 
 ---
@@ -397,15 +436,17 @@ lineratrade/
 
 All features implemented, tested, and documented!
 
-- [x] Linera microchains integration (SDK 0.15.6)
-- [x] Multi-DEX trading (Raydium, Jupiter, Binance)
-- [x] PineScript interpreter (v5 compatible)
-- [x] Visual strategy builder
-- [x] Social trading with real-time updates
-- [x] Backend services (API, WebSocket, database)
-- [x] Frontend application (6 pages, 5 components)
+- [x] Linera microchains integration (SDK 0.15.7 - Testnet Conway)
+- [x] Multi-DEX trading (Raydium, Jupiter, Binance) with intelligent routing
+- [x] PineScript interpreter (v5 compatible) with backtesting engine
+- [x] Visual strategy builder (React Flow drag-and-drop)
+- [x] Social trading with automatic trade replication
+- [x] Backend services (API, WebSocket, database, notifications)
+- [x] Frontend application (6 pages, 28+ components)
+- [x] Professional UI with glass morphism design
+- [x] Multi-channel notification system
 - [x] Docker Compose setup
-- [x] Complete documentation (22 guides)
+- [x] Complete documentation (24+ guides)
 - [x] Testing and verification
 
 ---
@@ -467,14 +508,16 @@ curl http://localhost:3001/health
 
 ## 🏆 Project Highlights
 
-1. **Complete Linera Integration**: Full microchain support with on-chain strategy execution
-2. **Multi-DEX Trading**: Raydium, Jupiter, and Binance integration
-3. **Dual Strategy Builders**: PineScript interpreter + visual block builder
-4. **Real-Time Social Trading**: Follow strategies with automatic replication
-5. **Professional UI**: 6 feature-rich pages with modern design
-6. **One-Command Deployment**: Docker Compose for instant setup
-7. **Comprehensive Documentation**: 22 guides covering all aspects
-8. **Cross-Platform**: Windows, Linux, macOS support
+1. **Complete Linera Integration**: Full microchain support with SDK 0.15.7 (Testnet Conway)
+2. **Multi-DEX Trading**: Raydium, Jupiter, and Binance integration with intelligent routing
+3. **Dual Strategy Builders**: PineScript interpreter + visual block builder (React Flow)
+4. **Real-Time Social Trading**: Follow strategies with automatic trade replication
+5. **Professional UI**: Modern glass morphism design with dark theme and animations
+6. **Advanced Analytics**: Live price feeds, performance metrics, and event streaming
+7. **Multi-Channel Notifications**: In-app, email, and webhook support
+8. **One-Command Deployment**: Docker Compose for instant setup
+9. **Comprehensive Documentation**: 24+ guides covering all aspects
+10. **Cross-Platform**: Windows, Linux, macOS support
 
 ---
 
@@ -491,8 +534,9 @@ curl http://localhost:3001/health
 ---
 
 **Status**: ✅ PRODUCTION READY  
-**Version**: 2.1.0  
-**Last Updated**: December 16, 2024  
+**Version**: 2.2.0  
+**Linera SDK**: 0.15.7 (Testnet Conway)  
+**Last Updated**: January 11, 2026  
 **Completion**: 100%
 
 **🎉 Ready to revolutionize decentralized trading! 🚀**
