@@ -32,6 +32,13 @@ export class StrategyMicrochainService {
   private lineraClient: LineraClient;
   private dexRouter: DEXRouter;
 
+  /**
+   * In-memory fallbacks when Postgres is unavailable.
+   * This keeps the Microchains UI usable even if the DB is down.
+   */
+  private inMemoryUserMicrochains: Map<string, { id: string; createdAt: Date }[]> =
+    new Map();
+
   constructor(
     lineraClient: LineraClient,
     dexRouter: DEXRouter
@@ -131,28 +138,50 @@ export class StrategyMicrochainService {
    * Exposed so API routes can provision microchains independently of deployment.
    */
   async createMicrochainForUser(userId: string): Promise<string> {
-    // Check if user already has a microchain
-    const existing = await pool.query(
-      `SELECT microchain_id FROM user_microchains WHERE user_id = $1 LIMIT 1`,
-      [userId]
-    );
+    try {
+      // Check if user already has a microchain in Postgres
+      const existing = await pool.query(
+        `SELECT microchain_id FROM user_microchains WHERE user_id = $1 LIMIT 1`,
+        [userId]
+      );
 
-    if (existing.rows.length > 0) {
-      return existing.rows[0].microchain_id;
+      if (existing.rows.length > 0) {
+        return existing.rows[0].microchain_id;
+      }
+
+      // Create new microchain ID (in production, this would call Linera API)
+      const microchainId = `microchain_${userId}_${Date.now()}`;
+
+      // Store microchain mapping
+      await pool.query(
+        `INSERT INTO user_microchains (user_id, microchain_id, created_at)
+         VALUES ($1, $2, CURRENT_TIMESTAMP)
+         ON CONFLICT (user_id) DO UPDATE SET microchain_id = $2`,
+        [userId, microchainId]
+      );
+
+      return microchainId;
+    } catch (error: any) {
+      if (this.isDatabaseUnavailable(error)) {
+        console.warn(
+          '[StrategyMicrochainService] Postgres unavailable; falling back to in-memory microchains for user:',
+          userId
+        );
+
+        const existing = this.inMemoryUserMicrochains.get(userId);
+        if (existing && existing.length > 0) {
+          return existing[0].id;
+        }
+
+        const microchainId = `microchain_${userId}_${Date.now()}`;
+        const record = { id: microchainId, createdAt: new Date() };
+        this.inMemoryUserMicrochains.set(userId, [record]);
+        return microchainId;
+      }
+
+      console.error('Error creating microchain for user:', error);
+      throw error;
     }
-
-    // Create new microchain ID (in production, this would call Linera API)
-    const microchainId = `microchain_${userId}_${Date.now()}`;
-
-    // Store microchain mapping
-    await pool.query(
-      `INSERT INTO user_microchains (user_id, microchain_id, created_at)
-       VALUES ($1, $2, CURRENT_TIMESTAMP)
-       ON CONFLICT (user_id) DO UPDATE SET microchain_id = $2`,
-      [userId, microchainId]
-    );
-
-    return microchainId;
   }
 
   /**
@@ -362,22 +391,56 @@ export class StrategyMicrochainService {
     status: 'ACTIVE' | 'PAUSED' | 'STOPPED';
     createdAt: Date;
   }[]> {
-    const result = await pool.query(
-      `SELECT microchain_id, created_at
-       FROM user_microchains
-       WHERE user_id = $1`,
-       [userId]
-    );
+    try {
+      const result = await pool.query(
+        `SELECT microchain_id, created_at
+         FROM user_microchains
+         WHERE user_id = $1`,
+        [userId]
+      );
 
-    return result.rows.map((row: any) => ({
-      id: row.microchain_id,
-      owner: userId,
-      strategyCount: 0,
-      orderCount: 0,
-      followerCount: 0,
-      status: 'ACTIVE',
-      createdAt: row.created_at,
-    }));
+      return result.rows.map((row: any) => ({
+        id: row.microchain_id,
+        owner: userId,
+        strategyCount: 0,
+        orderCount: 0,
+        followerCount: 0,
+        status: 'ACTIVE',
+        createdAt: row.created_at,
+      }));
+    } catch (error: any) {
+      if (this.isDatabaseUnavailable(error)) {
+        console.warn(
+          '[StrategyMicrochainService] Postgres unavailable; returning in-memory microchains for user:',
+          userId
+        );
+
+        const records = this.inMemoryUserMicrochains.get(userId) || [];
+        return records.map((record) => ({
+          id: record.id,
+          owner: userId,
+          strategyCount: 0,
+          orderCount: 0,
+          followerCount: 0,
+          status: 'ACTIVE',
+          createdAt: record.createdAt,
+        }));
+      }
+
+      console.error('Error getting user microchains:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Lightweight detector for "DB is down" conditions so we can fall back
+   * to in-memory representations instead of 500ing.
+   */
+  private isDatabaseUnavailable(error: any): boolean {
+    if (!error) return false;
+    if (error.code === 'ECONNREFUSED') return true;
+    const msg = String(error.message || '').toLowerCase();
+    return msg.includes('connect econnrefused') || msg.includes('timeout') || msg.includes('database is unavailable');
   }
 
   private getTimeWindow(timeframe: '1H' | '24H' | '7D' | '30D'): Date {
