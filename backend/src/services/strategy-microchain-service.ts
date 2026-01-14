@@ -63,11 +63,15 @@ export class StrategyMicrochainService {
         created_at: Date.now(),
       });
 
-      // Cache in database
+      // Cache in database for social/analytics views
       await pool.query(
-        `INSERT INTO strategies (id, user_id, name, type, code, visual_data, status)
-         VALUES ($1, $2, $3, $4, $5, $6, 'DRAFT')
-         ON CONFLICT (id) DO UPDATE SET updated_at = CURRENT_TIMESTAMP`,
+        `INSERT INTO strategies (id, user_id, name, type, code, visual_data, status, initial_capital)
+         VALUES ($1, $2, $3, $4, $5, $6, 'DRAFT', $7)
+         ON CONFLICT (id) DO UPDATE
+         SET code = EXCLUDED.code,
+             visual_data = EXCLUDED.visual_data,
+             status = EXCLUDED.status,
+             updated_at = CURRENT_TIMESTAMP`,
         [
           strategyId.toString(),
           strategy.userId,
@@ -75,16 +79,9 @@ export class StrategyMicrochainService {
           strategy.type,
           strategy.code || null,
           strategy.visualData ? JSON.stringify(strategy.visualData) : null,
+          10000,
         ]
       );
-        id: strategyId.toString(),
-        owner: strategy.userId,
-        name: strategy.name,
-        strategy_type: strategy.type === 'PINESCRIPT' 
-          ? { DSL: strategy.code || '' }
-          : { Form: strategy.visualData || {} },
-        active: false,
-      });
 
       // Strategy is automatically available on social page (via database query)
       return {
@@ -131,8 +128,9 @@ export class StrategyMicrochainService {
 
   /**
    * Create a microchain for a user (or get existing one)
+   * Exposed so API routes can provision microchains independently of deployment.
    */
-  private async createMicrochainForUser(userId: string): Promise<string> {
+  async createMicrochainForUser(userId: string): Promise<string> {
     // Check if user already has a microchain
     const existing = await pool.query(
       `SELECT microchain_id FROM user_microchains WHERE user_id = $1 LIMIT 1`,
@@ -349,6 +347,37 @@ export class StrategyMicrochainService {
       console.error('Error getting analytics:', error);
       throw new Error(`Failed to get analytics: ${error.message}`);
     }
+  }
+
+  /**
+   * Get microchains for a user from the relational DB.
+   * (In production this would be backed by Linera queries.)
+   */
+  async getUserMicrochains(userId: string): Promise<{
+    id: string;
+    owner: string;
+    strategyCount: number;
+    orderCount: number;
+    followerCount: number;
+    status: 'ACTIVE' | 'PAUSED' | 'STOPPED';
+    createdAt: Date;
+  }[]> {
+    const result = await pool.query(
+      `SELECT microchain_id, created_at
+       FROM user_microchains
+       WHERE user_id = $1`,
+       [userId]
+    );
+
+    return result.rows.map((row: any) => ({
+      id: row.microchain_id,
+      owner: userId,
+      strategyCount: 0,
+      orderCount: 0,
+      followerCount: 0,
+      status: 'ACTIVE',
+      createdAt: row.created_at,
+    }));
   }
 
   private getTimeWindow(timeframe: '1H' | '24H' | '7D' | '30D'): Date {

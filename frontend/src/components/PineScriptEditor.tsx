@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Editor from '@monaco-editor/react';
-import { pineScriptApi, strategyApi } from '@/lib/api';
+import { pineScriptApi, strategyApi, strategyMicrochainApi } from '@/lib/api';
 
 interface PineScriptEditorProps {
   strategyId?: string;
@@ -127,9 +127,19 @@ plot(slowMA, color=color.red, title="Slow MA")
 
     setCompiling(true);
     try {
+      // First deploy the strategy to Linera via the legacy endpoint
       const result = await strategyApi.deploy(strategyId);
-      alert('Strategy deployed to Linera microchain!');
-      console.log('Deployment result:', result);
+
+      // Also register deployment with the microchain service so it can
+      // track microchains, orders, and analytics for this (demo) user.
+      const userId = 'demo_user';
+      const microchainResult = await strategyMicrochainApi.deployToMicrochain(
+        strategyId,
+        userId
+      );
+
+      console.log('Deployment result:', result, microchainResult);
+      alert('Strategy deployed to Linera microchain and registered with microchain service!');
     } catch (error) {
       console.error('Deployment failed:', error);
       alert('Deployment failed');

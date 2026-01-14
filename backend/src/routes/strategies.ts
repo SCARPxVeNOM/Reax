@@ -199,45 +199,70 @@ router.post('/:id/backtest', async (req, res) => {
 // Get all active strategies for social trading
 router.get('/marketplace/active', async (req, res) => {
   try {
-    // Query Linera microchain for active strategies
-    const lineraResponse = await fetch(process.env.LINERA_SERVICE_URL || 'http://localhost:8080', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        query: `
-          query GetActiveStrategies {
-            queryApplication(
-              applicationId: "${process.env.LINERA_APP_ID}",
-              query: {
-                GetStrategies: {
-                  owner: null,
-                  limit: 100,
-                  offset: 0
-                }
-              }
-            )
-          }
-        `
-      })
-    });
+    let lineraStrategies: any[] = [];
 
-    let lineraStrategies = [];
-    if (lineraResponse.ok) {
-      const data = await lineraResponse.json();
-      const result = JSON.parse(data.data.queryApplication);
-      lineraStrategies = result.Strategies || [];
+    // Try to query Linera microchain for active strategies, but don't fail
+    // the whole endpoint if Linera is unavailable.
+    try {
+      const lineraResponse = await fetch(
+        process.env.LINERA_SERVICE_URL || 'http://localhost:8081',
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            query: `
+              query GetActiveStrategies {
+                queryApplication(
+                  applicationId: "${process.env.LINERA_APP_ID}",
+                  query: {
+                    GetStrategies: {
+                      owner: null,
+                      limit: 100,
+                      offset: 0
+                    }
+                  }
+                )
+              }
+            `
+          })
+        }
+      );
+
+      if (lineraResponse.ok) {
+        const data = await lineraResponse.json();
+        const result = JSON.parse(data.data.queryApplication);
+        lineraStrategies = result.Strategies || [];
+      }
+    } catch (lineraError: any) {
+      console.warn('Linera unavailable for marketplace strategies, falling back to DB only:', lineraError.message);
     }
 
     // Also get from local database for additional metadata
     const dbStrategies = await strategyRepository.findAll();
-    
-    // Merge and enrich data
-    const enrichedStrategies = lineraStrategies.map((lineraStrat: any) => {
-      const dbStrat = dbStrategies.find((s: any) => s.id === lineraStrat.id.toString());
-      return {
-        ...lineraStrat,
-        ...dbStrat,
-        // Mock performance metrics (would come from actual execution data)
+
+    let enrichedStrategies: any[];
+
+    if (lineraStrategies.length > 0) {
+      // Merge and enrich when we have on-chain data
+      enrichedStrategies = lineraStrategies.map((lineraStrat: any) => {
+        const dbStrat = dbStrategies.find((s: any) => s.id === lineraStrat.id.toString());
+        return {
+          ...lineraStrat,
+          ...dbStrat,
+          performance: {
+            totalReturn: Math.random() * 100 - 20,
+            winRate: Math.random() * 100,
+            sharpeRatio: Math.random() * 3,
+            maxDrawdown: Math.random() * 30,
+            totalTrades: Math.floor(Math.random() * 500),
+            followers: Math.floor(Math.random() * 100),
+          }
+        };
+      });
+    } else {
+      // Fallback: use DB strategies only so Social page still has content
+      enrichedStrategies = dbStrategies.map((s: any) => ({
+        ...s,
         performance: {
           totalReturn: Math.random() * 100 - 20,
           winRate: Math.random() * 100,
@@ -246,8 +271,8 @@ router.get('/marketplace/active', async (req, res) => {
           totalTrades: Math.floor(Math.random() * 500),
           followers: Math.floor(Math.random() * 100),
         }
-      };
-    });
+      }));
+    }
 
     res.json(enrichedStrategies);
   } catch (error: any) {

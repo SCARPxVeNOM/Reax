@@ -243,6 +243,26 @@ export const strategyMicrochainApi = {
     });
     return data;
   },
+
+  /**
+   * List microchains for a user
+   */
+  async getMicrochains(userId: string) {
+    const { data } = await apiClient.get('/api/strategy-microchain/microchains', {
+      params: { userId },
+    });
+    return data;
+  },
+
+  /**
+   * Create (or return existing) microchain for a user
+   */
+  async createMicrochain(userId: string) {
+    const { data } = await apiClient.post('/api/strategy-microchain/microchains', {
+      userId,
+    });
+    return data;
+  },
 };
 
 // Notification API

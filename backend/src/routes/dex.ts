@@ -52,14 +52,18 @@ router.post('/compare', async (req, res) => {
   try {
     const { inputToken, outputToken, amount, slippageBps } = req.body;
 
-    const result = await dexRouter.compareRoutes(
-      inputToken,
-      outputToken,
+    const bestQuote = await dexRouter.getBestQuote({
+      inputMint: inputToken,
+      outputMint: outputToken,
       amount,
-      slippageBps
-    );
+      slippageBps,
+      dexes: [DEX.RAYDIUM, DEX.JUPITER, DEX.BINANCE],
+    });
 
-    res.json(result);
+    res.json({
+      bestDex: bestQuote.dex,
+      quote: bestQuote,
+    });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }

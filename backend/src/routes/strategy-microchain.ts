@@ -151,5 +151,48 @@ router.get('/analytics', async (req, res) => {
   }
 });
 
+/**
+ * GET /api/strategy-microchain/microchains
+ * List microchains for a given user (from user_microchains table)
+ */
+router.get('/microchains', async (req, res) => {
+  try {
+    const userId = (req.query.userId as string) || 'demo_user';
+    const microchains = await strategyMicrochainService.getUserMicrochains(userId);
+
+    res.json({
+      success: true,
+      microchains,
+    });
+  } catch (error: any) {
+    console.error('Error getting microchains:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * POST /api/strategy-microchain/microchains
+ * Create (or return existing) microchain for a given user
+ */
+router.post('/microchains', async (req, res) => {
+  try {
+    const { userId } = req.body;
+
+    if (!userId) {
+      return res.status(400).json({ error: 'userId is required' });
+    }
+
+    const microchainId = await strategyMicrochainService.createMicrochainForUser(userId);
+
+    res.json({
+      success: true,
+      microchainId,
+    });
+  } catch (error: any) {
+    console.error('Error creating microchain:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 export default router;
 

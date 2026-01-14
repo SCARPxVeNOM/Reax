@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { useState, useEffect } from 'react';
 import { wsClient } from '@/lib/websocket';
 
@@ -243,6 +244,38 @@ export default function Home() {
             description="Full interpreter with technical indicators, backtesting engine, and real-time execution"
             features={['100+ Indicators', 'Backtesting', 'Live Trading']}
           />
+        </div>
+
+        {/* DEX Partners */}
+        <div className="mt-12 glass rounded-2xl p-6 flex flex-col md:flex-row items-center justify-between gap-6">
+          <div>
+            <p className="text-sm uppercase tracking-wide text-gray-400 mb-2">
+              Liquidity & Routing Partners
+            </p>
+            <p className="text-lg font-semibold text-white">
+              Powered by Jupiter & Raydium on Solana
+            </p>
+          </div>
+          <div className="flex items-center gap-6">
+            <div className="relative h-10 w-32">
+              <Image
+                src="/images/jupiter.jpg"
+                alt="Jupiter logo"
+                fill
+                className="object-contain"
+                sizes="128px"
+              />
+            </div>
+            <div className="relative h-10 w-32">
+              <Image
+                src="/images/radiyum.jpg"
+                alt="Raydium logo"
+                fill
+                className="object-contain"
+                sizes="128px"
+              />
+            </div>
+          </div>
         </div>
       </div>
 

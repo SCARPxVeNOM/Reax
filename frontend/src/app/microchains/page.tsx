@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useLinera } from '@/lib/linera-hooks';
+import { strategyMicrochainApi } from '@/lib/api';
 
 interface Microchain {
   id: string;
@@ -18,41 +19,47 @@ export default function MicchainsPage() {
   const [microchains, setMicrochains] = useState<Microchain[]>([]);
   const [selectedChain, setSelectedChain] = useState<Microchain | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  // TODO: replace with real authenticated user id
+  const userId = 'demo_user';
 
   useEffect(() => {
-    // Load microchains from Linera
     loadMicrochains();
   }, []);
 
   const loadMicrochains = async () => {
-    // Mock data for now - will be replaced with actual Linera queries
-    const mockChains: Microchain[] = [
-      {
-        id: 'chain_1',
-        owner: 'trader_1',
-        strategyCount: 3,
-        orderCount: 45,
-        followerCount: 12,
-        status: 'ACTIVE',
-        createdAt: new Date(),
-      },
-      {
-        id: 'chain_2',
-        owner: 'trader_2',
-        strategyCount: 1,
-        orderCount: 23,
-        followerCount: 8,
-        status: 'ACTIVE',
-        createdAt: new Date(),
-      },
-    ];
-    setMicrochains(mockChains);
+    setLoading(true);
+    try {
+      const { microchains } = await strategyMicrochainApi.getMicrochains(userId);
+      // API returns basic stats; map into view model
+      const mapped: Microchain[] = microchains.map((m: any) => ({
+        id: m.id,
+        owner: m.owner,
+        strategyCount: m.strategyCount ?? 0,
+        orderCount: m.orderCount ?? 0,
+        followerCount: m.followerCount ?? 0,
+        status: m.status ?? 'ACTIVE',
+        createdAt: m.createdAt ? new Date(m.createdAt) : new Date(),
+      }));
+      setMicrochains(mapped);
+    } catch (error) {
+      console.error('Failed to load microchains:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const createMicrochain = async () => {
-    // TODO: Call Linera contract to create new microchain
-    alert('Creating new microchain...');
-    setShowCreateModal(false);
+    try {
+      await strategyMicrochainApi.createMicrochain(userId);
+      await loadMicrochains();
+    } catch (error) {
+      console.error('Failed to create microchain:', error);
+      alert('Failed to create microchain');
+    } finally {
+      setShowCreateModal(false);
+    }
   };
 
   return (
