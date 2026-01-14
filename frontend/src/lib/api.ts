@@ -184,6 +184,67 @@ export const performanceApi = {
   },
 };
 
+// Strategy Microchain API (Complete flow: Strategy → Social → Microchain → Trading → Analytics)
+export const strategyMicrochainApi = {
+  /**
+   * Create and publish strategy to social feed
+   */
+  async createAndPublish(params: {
+    userId: string;
+    name: string;
+    type: 'PINESCRIPT' | 'VISUAL';
+    code?: string;
+    visualData?: any;
+    description?: string;
+  }) {
+    const { data } = await apiClient.post('/api/strategy-microchain/create-and-publish', params);
+    return data;
+  },
+
+  /**
+   * Deploy strategy to microchain (creates account)
+   */
+  async deployToMicrochain(strategyId: string, userId: string) {
+    const { data } = await apiClient.post(`/api/strategy-microchain/${strategyId}/deploy`, {
+      userId,
+    });
+    return data;
+  },
+
+  /**
+   * Execute trade and record on microchain
+   */
+  async executeTrade(strategyId: string, tradeParams: {
+    dex: 'RAYDIUM' | 'JUPITER' | 'BINANCE';
+    inputToken: string;
+    outputToken: string;
+    amount: number;
+    slippageBps?: number;
+    priorityFee?: number;
+    walletAddress: string;
+  }) {
+    const { data } = await apiClient.post(
+      `/api/strategy-microchain/${strategyId}/execute-trade`,
+      tradeParams
+    );
+    return data;
+  },
+
+  /**
+   * Get analytics from multiple microchains
+   */
+  async getAnalytics(params?: {
+    strategyId?: string;
+    microchainId?: string;
+    timeframe?: '1H' | '24H' | '7D' | '30D';
+  }) {
+    const { data } = await apiClient.get('/api/strategy-microchain/analytics', {
+      params,
+    });
+    return data;
+  },
+};
+
 // Notification API
 export const notificationApi = {
   async getNotifications(userId: string, unreadOnly?: boolean) {

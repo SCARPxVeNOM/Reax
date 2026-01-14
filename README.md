@@ -16,6 +16,9 @@ docker compose up -d --build
 
 **Then visit**: http://localhost:3000
 
+> **Testnet Conway flow (faucet + deploy inside container)**  
+> The Docker image entrypoint runs the same steps as `start-all.sh`: initializes a wallet via `https://faucet.testnet-conway.linera.net/`, deploys the Linera app, writes `backend/.env.local` and `frontend/.env.local` inside the container, then starts Linera service (8081), backend (3001), and frontend (3000). Postgres/Redis are started from `compose.yaml`.
+
 ### Option 2: Windows PowerShell
 
 ```powershell

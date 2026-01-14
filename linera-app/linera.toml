@@ -1,0 +1,6 @@
+[project]
+
+[[application]]
+name = "trade-ai"
+contract = "trade-ai/target/wasm32-unknown-unknown/release/linera_trade_ai.wasm"
+service = "trade-ai/target/wasm32-unknown-unknown/release/linera_trade_ai.wasm"

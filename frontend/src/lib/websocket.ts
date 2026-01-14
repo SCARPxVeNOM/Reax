@@ -138,6 +138,31 @@ class WebSocketClient {
     this.tradeCallbacks.delete(callback);
   }
 
+  // Generic event listener for custom events
+  on(event: string, callback: (data: any) => void) {
+    if (this.socket) {
+      this.socket.on(event, callback);
+    }
+  }
+
+  // Remove generic event listener
+  off(event: string, callback?: (data: any) => void) {
+    if (this.socket) {
+      if (callback) {
+        this.socket.off(event, callback);
+      } else {
+        this.socket.off(event);
+      }
+    }
+  }
+
+  // Emit custom events
+  emit(event: string, data?: any) {
+    if (this.socket) {
+      this.socket.emit(event, data);
+    }
+  }
+
   isConnected(): boolean {
     return this.socket?.connected || false;
   }

@@ -152,6 +152,35 @@ CREATE TABLE IF NOT EXISTS user_preferences (
     INDEX idx_user_id (user_id)
 );
 
+-- User Microchains table (maps users to their microchains)
+CREATE TABLE IF NOT EXISTS user_microchains (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id VARCHAR(255) NOT NULL UNIQUE,
+    microchain_id VARCHAR(255) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_user_id (user_id),
+    INDEX idx_microchain_id (microchain_id)
+);
+
+-- Trade Executions table (records all trades executed on microchains)
+CREATE TABLE IF NOT EXISTS trade_executions (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    strategy_id UUID REFERENCES strategies(id) ON DELETE CASCADE,
+    microchain_id VARCHAR(255) NOT NULL,
+    dex VARCHAR(50) NOT NULL CHECK (dex IN ('RAYDIUM', 'JUPITER', 'BINANCE')),
+    input_token VARCHAR(100) NOT NULL,
+    output_token VARCHAR(100) NOT NULL,
+    input_amount DECIMAL(30, 18) NOT NULL,
+    output_amount DECIMAL(30, 18),
+    tx_hash VARCHAR(255),
+    status VARCHAR(50) NOT NULL DEFAULT 'PENDING' CHECK (status IN ('PENDING', 'CONFIRMED', 'FAILED')),
+    executed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_strategy_id (strategy_id),
+    INDEX idx_microchain_id (microchain_id),
+    INDEX idx_dex (dex),
+    INDEX idx_executed_at (executed_at)
+);
+
 -- Create updated_at trigger function
 CREATE OR REPLACE FUNCTION update_updated_at_column()
 RETURNS TRIGGER AS $$

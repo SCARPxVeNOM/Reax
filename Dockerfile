@@ -27,8 +27,13 @@ WORKDIR /build
 # Copy project files
 COPY . .
 
-# Make run script executable
-RUN chmod +x /build/run.bash
+# Make scripts executable
+RUN chmod +x /build/run.bash /build/start-all.sh /build/docker-entrypoint-testnet.sh
+
+# Install JS dependencies (so container can run without bind-mounting host node_modules)
+RUN npm install
+RUN cd backend && npm install
+RUN cd frontend && npm install
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
@@ -37,5 +42,5 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
 # Expose ports
 EXPOSE 3000 3001 8080 8081
 
-# Run the platform
-ENTRYPOINT ["bash", "/build/run.bash"]
+# Run the platform (Testnet Conway flow, like start-all.sh)
+ENTRYPOINT ["bash", "/build/docker-entrypoint-testnet.sh"]

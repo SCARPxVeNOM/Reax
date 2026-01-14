@@ -7,19 +7,55 @@ services:
       - "3001:3001"   # Backend (Express)
       - "8080:8080"   # Linera Faucet
       - "8081:8081"   # Linera GraphQL Service
-    volumes:
-      - .:/build
-      - /build/node_modules
-      - /build/frontend/node_modules
-      - /build/backend/node_modules
-      - /build/target
     environment:
       - NODE_ENV=development
       - RUST_LOG=info
+      - TESTNET_FAUCET=https://faucet.testnet-conway.linera.net/
+      # Infra (service names below)
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=lineratrade
+      - DB_USER=admin
+      - DB_PASSWORD=password
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      # Optional: override Jupiter key
+      - JUPITER_API_KEY=bcdb9c6b-a590-4fad-b4d4-06990836d9f0
     networks:
       - lineratrade-network
     restart: unless-stopped
+    depends_on:
+      - postgres
+      - redis
+
+  postgres:
+    image: postgres:15-alpine
+    container_name: lineratrade-postgres
+    environment:
+      POSTGRES_DB: lineratrade
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - lineratrade-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: lineratrade-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - lineratrade-network
 
 networks:
   lineratrade-network:
     driver: bridge
+
+volumes:
+  postgres_data:
+  redis_data:

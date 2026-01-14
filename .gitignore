@@ -43,3 +43,9 @@ Cargo.lock
 # Logs
 logs/
 *.log
+
+# Runtime PID files
+*.pid
+.backend.pid
+.frontend.pid
+.linera.pid

@@ -21,4 +21,4 @@ tokio = { version = "1.40", features = ["full"] }
 linera-sdk = { workspace = true, features = ["test"] }
 
 [lib]
-crate-type = ["cdylib", "rlib"]
+crate-type = ["cdylib"]

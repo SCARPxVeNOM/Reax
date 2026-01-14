@@ -13,9 +13,14 @@ import dexRoutes from './routes/dex';
 import strategyRoutes from './routes/strategies';
 import pineScriptRoutes from './routes/pinescript';
 import visualStrategyRoutes from './routes/visual-strategy';
+import strategyMicrochainRoutes from './routes/strategy-microchain';
 
 import { WebSocketServer } from './services/websocket-server';
 
+// Load env in the same order our scripts generate them
+// - backend/.env.local (created by start-all.sh / run.bash / start-platform.ps1)
+// - backend/.env (optional manual)
+dotenv.config({ path: '.env.local' });
 dotenv.config();
 
 const app = express();
@@ -36,6 +41,7 @@ app.use('/api/dex', dexRoutes);
 app.use('/api/strategies', strategyRoutes);
 app.use('/api/pinescript', pineScriptRoutes);
 app.use('/api/visual-strategy', visualStrategyRoutes);
+app.use('/api/strategy-microchain', strategyMicrochainRoutes);
 
 // Health check
 app.get('/health', (req, res) => {

@@ -34,6 +34,7 @@ services:
     container_name: lineratrade-linera
     ports:
       - "8080:8080"   # Linera faucet
+      - "8081:8081"   # Linera service (GraphQL/JSON-RPC depending on image)
       - "9001:9001"   # Validator proxy
       - "13001:13001" # Validator
     volumes:
@@ -41,9 +42,9 @@ services:
       - linera_data:/data
     command: >
       sh -c "linera net up --testing-prng-seed 37 &&
-             linera service --port 8080"
+             linera service --port 8081"
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/"]
+      test: ["CMD", "curl", "-f", "http://localhost:8081/"]
       interval: 30s
       timeout: 10s
       retries: 5

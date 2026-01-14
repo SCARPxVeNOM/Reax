@@ -220,15 +220,15 @@ export class LineraGraphQLClient {
 }
 
 // Singleton instance
-let lineraClient: LineraGraphQLClient | null = null;
+let clientInstance: LineraGraphQLClient | null = null;
 
 export function getLineraClient(): LineraGraphQLClient {
-  if (!lineraClient) {
-    lineraClient = new LineraGraphQLClient();
+  if (!clientInstance) {
+    clientInstance = new LineraGraphQLClient();
   }
-  return lineraClient;
+  return clientInstance;
 }
 
 // Export singleton for direct use
-export const lineraClient = new LineraGraphQLClient();
+export const lineraClient = getLineraClient();
 

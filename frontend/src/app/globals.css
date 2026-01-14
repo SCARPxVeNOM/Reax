@@ -3,223 +3,262 @@
 @tailwind utilities;
 
 :root {
-  --background: 0 0% 100%;
-  --foreground: 222.2 84% 4.9%;
-  --border: 214.3 31.8% 91.4%;
+  --background: #0a0e1a;
+  --foreground: #ffffff;
+  --card: #131824;
+  --card-hover: #1a2030;
+  --border: #1e2738;
+  --primary: #3b82f6;
+  --primary-hover: #2563eb;
+  --success: #10b981;
+  --danger: #ef4444;
+  --warning: #f59e0b;
+  --muted: #6b7280;
+  --accent: #8b5cf6;
 }
 
-/* Force light mode - ensure text is always dark on white backgrounds */
+* {
+  box-sizing: border-box;
+  padding: 0;
+  margin: 0;
+}
+
+html,
 body {
-  color: #1f2937; /* text-gray-800 */
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 25%, #f093fb 50%, #4facfe 75%, #00f2fe 100%);
-  background-size: 400% 400%;
-  animation: gradientShift 15s ease infinite;
-  min-height: 100vh;
+  max-width: 100vw;
+  overflow-x: hidden;
+  background: var(--background);
+  color: var(--foreground);
 }
 
-@keyframes gradientShift {
-  0% {
-    background-position: 0% 50%;
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--background);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--muted);
+}
+
+/* Animations */
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
   }
   50% {
-    background-position: 100% 50%;
+    opacity: 0.5;
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -1000px 0;
   }
   100% {
-    background-position: 0% 50%;
+    background-position: 1000px 0;
   }
 }
 
-/* Glass morphism utility classes */
+.animate-slide-in {
+  animation: slideIn 0.3s ease-out;
+}
+
+.animate-pulse-slow {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Glass morphism effect */
 .glass {
-  background: rgba(255, 255, 255, 0.25);
+  background: rgba(19, 24, 36, 0.7);
   backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+  border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-.glass-card {
-  background: rgba(255, 255, 255, 0.3);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.2);
+/* Gradient text */
+.gradient-text {
+  background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 
-.glass-card:hover {
-  background: rgba(255, 255, 255, 0.35);
-  box-shadow: 0 12px 40px 0 rgba(31, 38, 135, 0.3);
-  transform: translateY(-2px);
+/* Card hover effect */
+.card-hover {
   transition: all 0.3s ease;
 }
 
-.glass-panel {
-  background: rgba(255, 255, 255, 0.2);
-  backdrop-filter: blur(15px);
-  -webkit-backdrop-filter: blur(15px);
-  border: 1px solid rgba(255, 255, 255, 0.25);
-  box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.25);
+.card-hover:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3);
 }
 
-.glass-input {
-  background: rgba(255, 255, 255, 0.4);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  box-shadow: 0 4px 16px 0 rgba(31, 38, 135, 0.15);
+/* Button styles */
+.btn-primary {
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  color: white;
+  padding: 0.75rem 1.5rem;
+  border-radius: 0.5rem;
+  font-weight: 600;
+  transition: all 0.3s ease;
+  border: none;
+  cursor: pointer;
 }
 
-.glass-input:focus {
-  background: rgba(255, 255, 255, 0.5);
-  border-color: rgba(59, 130, 246, 0.5);
-  box-shadow: 0 4px 20px 0 rgba(59, 130, 246, 0.3);
+.btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 20px rgba(59, 130, 246, 0.3);
 }
 
-/* Ensure text on white backgrounds is visible - but respect explicit color classes */
-.bg-white {
-  color: #1f2937; /* Default dark text */
+.btn-secondary {
+  background: var(--card);
+  color: var(--foreground);
+  padding: 0.75rem 1.5rem;
+  border-radius: 0.5rem;
+  font-weight: 600;
+  transition: all 0.3s ease;
+  border: 1px solid var(--border);
+  cursor: pointer;
 }
 
-/* Only override if no explicit text color class is set */
-.bg-white:not([class*="text-"]) {
-  color: #1f2937;
+.btn-secondary:hover {
+  background: var(--card-hover);
+  border-color: var(--primary);
 }
 
-/* Ensure headings and text elements on white backgrounds are visible */
-.bg-white h1:not([class*="text-"]),
-.bg-white h2:not([class*="text-"]),
-.bg-white h3:not([class*="text-"]),
-.bg-white h4:not([class*="text-"]),
-.bg-white h5:not([class*="text-"]),
-.bg-white h6:not([class*="text-"]),
-.bg-white p:not([class*="text-"]),
-.bg-white span:not([class*="text-"]),
-.bg-white div:not([class*="text-"]) {
-  color: #1f2937;
+/* Status badges */
+.badge {
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
 }
 
-/* Ensure select and input elements have visible text */
-.bg-white select:not([class*="text-"]),
-.bg-white input:not([class*="text-"]),
-.bg-white textarea:not([class*="text-"]) {
-  color: #1f2937;
+.badge-success {
+  background: rgba(16, 185, 129, 0.1);
+  color: var(--success);
+  border: 1px solid rgba(16, 185, 129, 0.2);
 }
 
-/* Force dark text for select options */
-select option {
-  color: #1f2937 !important;
-  background-color: #ffffff !important;
+.badge-danger {
+  background: rgba(239, 68, 68, 0.1);
+  color: var(--danger);
+  border: 1px solid rgba(239, 68, 68, 0.2);
 }
 
-/* Ensure input placeholders are visible but subtle */
-input::placeholder,
-textarea::placeholder {
-  color: #9ca3af !important; /* text-gray-400 */
+.badge-warning {
+  background: rgba(245, 158, 11, 0.1);
+  color: var(--warning);
+  border: 1px solid rgba(245, 158, 11, 0.2);
 }
 
-/* Ensure select elements have dark text */
-select {
-  color: #1f2937 !important; /* text-gray-800 */
+.badge-primary {
+  background: rgba(59, 130, 246, 0.1);
+  color: var(--primary);
+  border: 1px solid rgba(59, 130, 246, 0.2);
 }
 
-/* Ensure all form elements have proper contrast */
-input[type="text"],
-input[type="email"],
-input[type="password"],
-input[type="number"],
-input[type="search"],
-textarea,
-select {
-  color: #1f2937 !important; /* Dark text */
-  background-color: #ffffff !important; /* White background */
+/* Chart container */
+.chart-container {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 1rem;
+  padding: 1.5rem;
 }
 
-/* Force dark text for typed input values */
-input[type="text"]:not(:placeholder-shown),
-input[type="email"]:not(:placeholder-shown),
-input[type="password"]:not(:placeholder-shown),
-input[type="number"]:not(:placeholder-shown),
-input[type="search"]:not(:placeholder-shown),
-textarea:not(:placeholder-shown) {
-  color: #1f2937 !important; /* Dark text when typing */
+/* Loading skeleton */
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--card) 0%,
+    var(--card-hover) 50%,
+    var(--card) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: 0.5rem;
 }
 
-input[type="text"]::placeholder,
-input[type="email"]::placeholder,
-input[type="password"]::placeholder,
-input[type="number"]::placeholder,
-input[type="search"]::placeholder,
-textarea::placeholder {
-  color: #9ca3af !important; /* Light gray placeholder */
+/* Tooltip */
+.tooltip {
+  position: relative;
 }
 
-/* Force select dropdown text to be dark */
-select,
-select:focus,
-select:active,
-select option {
-  color: #1f2937 !important; /* Dark text */
-  background-color: #ffffff !important; /* White background */
+.tooltip::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 0.5rem 0.75rem;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+  margin-bottom: 0.5rem;
 }
 
-/* Ensure select shows dark text when opened */
-select:focus option:checked {
-  color: #1f2937 !important;
-  background-color: #eff6ff !important; /* Light blue highlight */
+.tooltip:hover::after {
+  opacity: 1;
 }
 
-/* Force all input values to be dark */
-input {
-  -webkit-text-fill-color: #1f2937 !important; /* For webkit browsers */
-  color: #1f2937 !important;
+/* Grid layout */
+.grid-auto-fit {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1.5rem;
 }
 
-/* Override any white text on inputs */
-input[value]:not([value=""]),
-input:not([value=""]) {
-  color: #1f2937 !important;
+/* Responsive text */
+@media (max-width: 768px) {
+  html {
+    font-size: 14px;
+  }
 }
 
-/* Force dark text for ALL input states */
-input,
-input:focus,
-input:active,
-input:hover,
-input:enabled,
-input:disabled {
-  color: #1f2937 !important;
-  -webkit-text-fill-color: #1f2937 !important;
+/* Focus styles */
+*:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
 }
 
-/* Force dark text for ALL select states */
-select,
-select:focus,
-select:active,
-select:hover,
-select:enabled {
-  color: #1f2937 !important;
-}
-
-/* Force dark text for ALL option elements */
-option {
-  color: #1f2937 !important;
-  background-color: #ffffff !important;
-}
-
-option:checked,
-option:selected,
-option:hover {
-  color: #1f2937 !important;
-  background-color: #eff6ff !important;
-}
-
-/* Override any autofill styles that might make text white */
-input:-webkit-autofill,
-input:-webkit-autofill:hover,
-input:-webkit-autofill:focus,
-input:-webkit-autofill:active {
-  -webkit-text-fill-color: #1f2937 !important;
-  color: #1f2937 !important;
-  -webkit-box-shadow: 0 0 0px 1000px white inset !important;
-  box-shadow: 0 0 0px 1000px white inset !important;
+/* Selection */
+::selection {
+  background: var(--primary);
+  color: white;
 }

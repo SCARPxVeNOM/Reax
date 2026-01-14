@@ -105,6 +105,7 @@ cat > backend/.env.local << EOF
 LINERA_NETWORK=$LINERA_NETWORK
 LINERA_FAUCET_URL=$TESTNET_FAUCET_URL
 LINERA_SERVICE_URL=http://localhost:$LINERA_SERVICE_PORT
+LINERA_RPC_URL=http://localhost:$LINERA_SERVICE_PORT
 LINERA_APP_ID=$TRADE_AI_APP_ID
 LINERA_CHAIN_ID=$DEFAULT_CHAIN_ID
 
@@ -116,16 +117,18 @@ DB_USER=admin
 DB_PASSWORD=password
 
 # API Configuration
-API_PORT=$BACKEND_PORT
+PORT=$BACKEND_PORT
 FRONTEND_URL=http://localhost:$FRONTEND_PORT
 
 # DEX Configuration
-RAYDIUM_API_URL=https://api.raydium.io
+RAYDIUM_API_URL=https://transaction-v1.raydium.io
+RAYDIUM_PRIORITY_FEE_URL=https://api-v3.raydium.io/main/auto-fee
 JUPITER_API_URL=https://quote-api.jup.ag/v6
+JUPITER_API_KEY=bcdb9c6b-a590-4fad-b4d4-06990836d9f0
 BINANCE_API_URL=https://api.binance.com
 
 # Solana Configuration
-SOLANA_RPC_URL=https://api.devnet.solana.com
+SOLANA_RPC_URL=https://api.mainnet-beta.solana.com
 EOF
 
 echo "✅ Backend environment configured"
