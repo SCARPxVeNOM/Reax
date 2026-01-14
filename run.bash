@@ -163,19 +163,42 @@ EOF
 echo "✅ Frontend environment configured"
 echo ""
 
-# Install Backend Dependencies (ensure correct platform modules in WSL)
+# Detect if running inside WSL; if so, skip Node install/dev servers and
+# let Windows host run frontend/backend using the generated .env files.
+IS_WSL=0
+if grep -qi microsoft /proc/version 2>/dev/null; then
+  IS_WSL=1
+fi
+
+if [ "$IS_WSL" -eq 1 ]; then
+  echo "ℹ️ Detected WSL environment."
+  echo "   Skipping Node dependency install and dev servers to avoid"
+  echo "   cross-OS node_modules issues."
+  echo ""
+  echo "Next steps (run in Windows PowerShell):"
+  echo "  1) cd backend  && npm run dev"
+  echo "  2) cd frontend && npm run dev"
+  echo ""
+  echo "Configuration:"
+  echo "  Chain ID:  $DEFAULT_CHAIN_ID"
+  echo "  App ID:    $TRADE_AI_APP_ID"
+  echo "  Linera GraphQL: http://localhost:$LINERA_SERVICE_PORT"
+  echo "  Faucet:         http://localhost:$FAUCET_PORT"
+  exit 0
+fi
+
+# Native Linux flow: install deps and start dev servers here
+
 echo "📦 Installing backend dependencies..."
 cd backend
 npm install
 cd ..
 
-# Install Frontend Dependencies (ensure React/Next present)
 echo "📦 Installing frontend dependencies..."
 cd frontend
 npm install --legacy-peer-deps
 cd ..
 
-# Start Backend Server
 echo "🚀 Starting backend server on port $BACKEND_PORT..."
 cd backend
 npm run dev &
@@ -184,7 +207,6 @@ echo "✅ Backend server started with PID $BACKEND_PID"
 cd ..
 sleep 5
 
-# Start Frontend Server
 echo "🚀 Starting frontend server on port $FRONTEND_PORT..."
 cd frontend
 npm run dev &
@@ -193,7 +215,6 @@ echo "✅ Frontend server started with PID $FRONTEND_PID"
 cd ..
 sleep 10
 
-# Platform Ready
 echo ""
 echo "========================================="
 echo "  ✅ LineraTrade AI Platform READY!"
