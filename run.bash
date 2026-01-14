@@ -174,7 +174,8 @@ if grep -qi microsoft /proc/version 2>/dev/null || [ -n "${WSL_DISTRO_NAME:-}" ]
   IS_WSL=1
 fi
 
-if [ "$IS_WSL" -eq 1 ]; then
+<<COMMENT
+ if [ "$IS_WSL" -eq 1 ]; then
   echo "ℹ️ Detected WSL environment."
   echo "   Skipping Node dependency install and dev servers to avoid"
   echo "   cross-OS node_modules issues."
@@ -187,15 +188,18 @@ if [ "$IS_WSL" -eq 1 ]; then
   echo "  Chain ID:  $DEFAULT_CHAIN_ID"
   echo "  App ID:    $TRADE_AI_APP_ID"
   echo "  Linera GraphQL: http://localhost:$LINERA_SERVICE_PORT"
-  echo "  Faucet:         "$TESTNET_FAUCET_URL"
+  echo "  Faucet:         $TESTNET_FAUCET_URL"
   exit 0
-fi
+fi 
+COMMENT
 
 # Native Linux flow: install deps and start dev servers here
 
 echo "📦 Installing backend dependencies..."
 cd backend
-npm install
+if [ ! -d "node_modules" ]; then
+    npm install
+fi
 cd ..
 
 echo "📦 Installing frontend dependencies..."
@@ -230,7 +234,7 @@ echo "🌐 Access Points:"
 echo "   Frontend:  http://localhost:$FRONTEND_PORT"
 echo "   Backend:   http://localhost:$BACKEND_PORT"
 echo "   Linera:    http://localhost:$LINERA_SERVICE_PORT"
-echo "   Faucet:    "$TESTNET_FAUCET_URL"
+echo "   Faucet:    $TESTNET_FAUCET_URL"
 echo ""
 echo "📊 Configuration:"
 echo "   Chain ID:  $DEFAULT_CHAIN_ID"
