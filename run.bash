@@ -97,8 +97,12 @@ if [ $? -ne 0 ]; then
   exit 1
 fi
 
-# First 64-character hex hash in the output is the app id
-TRADE_AI_APP_ID=$(echo "$DEPLOY_OUTPUT" | grep -oE '[0-9a-f]{64}' | head -n 1)
+# Prefer the hash on a line mentioning "application" (app id), falling back
+# to the last 64-char hash if format changes.
+TRADE_AI_APP_ID=$(echo "$DEPLOY_OUTPUT" | grep -i "application" | grep -oE '[0-9a-f]{64}' | head -n 1 || true)
+if [ -z "$TRADE_AI_APP_ID" ]; then
+  TRADE_AI_APP_ID=$(echo "$DEPLOY_OUTPUT" | grep -oE '[0-9a-f]{64}' | tail -n 1)
+fi
 
 echo "✅ Trade AI application deployed: $TRADE_AI_APP_ID"
 echo ""
