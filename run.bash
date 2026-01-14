@@ -88,16 +88,17 @@ if [ ! -f "$CONTRACT_WASM" ]; then
 fi
 
 DEPLOY_OUTPUT=$(linera --wait-for-outgoing-messages publish-and-create \
-    "$CONTRACT_WASM" \
-    "$SERVICE_WASM" 2>&1)
+  "$CONTRACT_WASM" \
+  "$SERVICE_WASM" 2>&1)
 
 if [ $? -ne 0 ]; then
-    echo "❌ Application deployment failed"
-    echo "$DEPLOY_OUTPUT"
-    exit 1
+  echo "❌ Application deployment failed"
+  echo "$DEPLOY_OUTPUT"
+  exit 1
 fi
 
-TRADE_AI_APP_ID=$(echo "$DEPLOY_OUTPUT" | grep -oE '[a-f0-9]\{64\}' | head -n 1)
+# First 64-character hex hash in the output is the app id
+TRADE_AI_APP_ID=$(echo "$DEPLOY_OUTPUT" | grep -oE '[0-9a-f]{64}' | head -n 1)
 
 echo "✅ Trade AI application deployed: $TRADE_AI_APP_ID"
 echo ""
@@ -162,20 +163,16 @@ EOF
 echo "✅ Frontend environment configured"
 echo ""
 
-# Install Backend Dependencies
+# Install Backend Dependencies (ensure correct platform modules in WSL)
 echo "📦 Installing backend dependencies..."
 cd backend
-if [ ! -d "node_modules" ]; then
-    npm install
-fi
+npm install
 cd ..
 
-# Install Frontend Dependencies
+# Install Frontend Dependencies (ensure React/Next present)
 echo "📦 Installing frontend dependencies..."
 cd frontend
-if [ ! -d "node_modules" ]; then
-    npm install --legacy-peer-deps
-fi
+npm install --legacy-peer-deps
 cd ..
 
 # Start Backend Server
