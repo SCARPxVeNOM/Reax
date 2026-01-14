@@ -170,7 +170,7 @@ echo ""
 # Detect if running inside WSL; if so, skip Node install/dev servers and
 # let Windows host run frontend/backend using the generated .env files.
 IS_WSL=0
-if grep -qi microsoft /proc/version 2>/dev/null; then
+if grep -qi microsoft /proc/version 2>/dev/null || [ -n "${WSL_DISTRO_NAME:-}" ]; then
   IS_WSL=1
 fi
 
@@ -180,14 +180,14 @@ if [ "$IS_WSL" -eq 1 ]; then
   echo "   cross-OS node_modules issues."
   echo ""
   echo "Next steps (run in Windows PowerShell):"
-  echo "  1) cd backend  && npm run dev"
-  echo "  2) cd frontend && npm run dev"
+  echo "  1) cd backend  && npm install && npm run dev"
+  echo "  2) cd frontend && npm install && npm run dev"
   echo ""
   echo "Configuration:"
   echo "  Chain ID:  $DEFAULT_CHAIN_ID"
   echo "  App ID:    $TRADE_AI_APP_ID"
   echo "  Linera GraphQL: http://localhost:$LINERA_SERVICE_PORT"
-  echo "  Faucet:         http://localhost:$FAUCET_PORT"
+  echo "  Faucet:         "$TESTNET_FAUCET_URL"
   exit 0
 fi
 
@@ -200,7 +200,9 @@ cd ..
 
 echo "📦 Installing frontend dependencies..."
 cd frontend
-npm install --legacy-peer-deps
+if [ ! -d "node_modules" ]; then
+    npm install --legacy-peer-deps
+fi
 cd ..
 
 echo "🚀 Starting backend server on port $BACKEND_PORT..."
@@ -228,7 +230,7 @@ echo "🌐 Access Points:"
 echo "   Frontend:  http://localhost:$FRONTEND_PORT"
 echo "   Backend:   http://localhost:$BACKEND_PORT"
 echo "   Linera:    http://localhost:$LINERA_SERVICE_PORT"
-echo "   Faucet:    http://localhost:$FAUCET_PORT"
+echo "   Faucet:    "$TESTNET_FAUCET_URL"
 echo ""
 echo "📊 Configuration:"
 echo "   Chain ID:  $DEFAULT_CHAIN_ID"
