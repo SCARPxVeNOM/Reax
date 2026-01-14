@@ -76,15 +76,28 @@ fi
 echo "✅ Build successful"
 echo ""
 
-# Publish and create the application
+# Publish and create the application (match start-all.sh behaviour)
 echo "🚀 Publishing Trade AI application..."
-TRADE_AI_APP=$(linera --wait-for-outgoing-messages project publish-and-create . trade-ai)
-if [ $? -ne 0 ]; then
-    echo "❌ Application deployment failed. Exiting..."
+
+CONTRACT_WASM="target/wasm32-unknown-unknown/release/linera_trade_ai.wasm"
+SERVICE_WASM="target/wasm32-unknown-unknown/release/linera_trade_ai.wasm"
+
+if [ ! -f "$CONTRACT_WASM" ]; then
+    echo "❌ WASM file not found at $CONTRACT_WASM"
     exit 1
 fi
 
-TRADE_AI_APP_ID=$(echo "$TRADE_AI_APP" | head -n 1)
+DEPLOY_OUTPUT=$(linera --wait-for-outgoing-messages publish-and-create \
+    "$CONTRACT_WASM" \
+    "$SERVICE_WASM" 2>&1)
+
+if [ $? -ne 0 ]; then
+    echo "❌ Application deployment failed"
+    echo "$DEPLOY_OUTPUT"
+    exit 1
+fi
+
+TRADE_AI_APP_ID=$(echo "$DEPLOY_OUTPUT" | grep -oE '[a-f0-9]\{64\}' | head -n 1)
 
 echo "✅ Trade AI application deployed: $TRADE_AI_APP_ID"
 echo ""

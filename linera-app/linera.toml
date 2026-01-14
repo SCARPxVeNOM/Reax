@@ -2,5 +2,8 @@
 
 [[application]]
 name = "trade-ai"
-contract = "trade-ai/target/wasm32-unknown-unknown/release/linera_trade_ai.wasm"
-service = "trade-ai/target/wasm32-unknown-unknown/release/linera_trade_ai.wasm"
+# The Trade AI contract and service are built as a single Wasm artifact.
+# Cargo builds into the workspace-level target directory, so the correct
+# relative path is `target/.../linera_trade_ai.wasm` (not under `trade-ai/`).
+contract = "target/wasm32-unknown-unknown/release/linera_trade_ai.wasm"
+service = "target/wasm32-unknown-unknown/release/linera_trade_ai.wasm"
