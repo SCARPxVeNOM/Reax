@@ -1,9 +1,13 @@
+#![cfg_attr(target_arch = "wasm32", no_main)]
+
+mod state;
+
 use linera_sdk::{Contract, ContractRuntime};
 use linera_sdk::abi::WithContractAbi;
 use linera_sdk::views::RootView;
 use linera_sdk::linera_base_types::StreamName;
 use abi::{LineraTradeAbi, Event, Operation, Order, OrderStatus, Signal, Strategy, DEXOrder, StrategyFollower, TradeReplication, ReplicationStatus};
-use crate::state::LineraTradeState;
+use self::state::LineraTradeState;
 
 linera_sdk::contract!(LineraTradeContract);
 

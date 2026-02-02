@@ -1,7 +1,11 @@
+#![cfg_attr(target_arch = "wasm32", no_main)]
+
+mod state;
+
 use linera_sdk::{Service, ServiceRuntime};
 use linera_sdk::abi::WithServiceAbi;
 use abi::{LineraTradeAbi, Order, Signal, Strategy, Query, QueryResponse};
-use crate::state::LineraTradeState;
+use self::state::LineraTradeState;
 
 linera_sdk::service!(LineraTradeService);
 

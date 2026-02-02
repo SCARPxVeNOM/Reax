@@ -1,5 +1,5 @@
 [package]
-name = "linera-trade-ai"
+name = "trade-ai"
 version = "0.1.0"
 edition = "2021"
 
@@ -20,5 +20,12 @@ tokio = { version = "1.40", features = ["full"] }
 [dev-dependencies]
 linera-sdk = { workspace = true, features = ["test"] }
 
-[lib]
-crate-type = ["cdylib"]
+[[bin]]
+name = "trade-ai_contract"
+path = "src/contract.rs"
+
+[[bin]]
+name = "trade-ai_service"
+path = "src/service.rs"
+
+

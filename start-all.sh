@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # LineraTrade AI - Complete Platform Startup Script
 # This script handles everything: wallet init, deployment, and service startup
+# Follows linCasino testnet connection pattern
 
-set -e
+set -eu
 
 # Colors
 RED='\033[0;31m'
@@ -13,8 +14,33 @@ MAGENTA='\033[0;35m'
 CYAN='\033[0;36m'
 NC='\033[0m'
 
-TESTNET_FAUCET="https://faucet.testnet-conway.linera.net/"
-WALLET_DIR="$HOME/.config/linera"
+# Port Configuration
+LINERA_SERVICE_PORT=8081
+BACKEND_PORT=3001
+FRONTEND_PORT=3000
+LINERA_MAX_PENDING_MESSAGES=100
+
+# Add cargo bin directory to PATH (where linera is installed) - same as linCasino
+export PATH="$HOME/.cargo/bin:$PWD/target/debug:$PATH"
+
+# -----------------------------------------------------------------------------------------------------------------
+# Connect to Testnet Conway (exactly like linCasino)
+# -----------------------------------------------------------------------------------------------------------------
+
+# Use Testnet Conway faucet
+FAUCET_URL="https://faucet.testnet-conway.linera.net/"
+GRAPHQL_URL="http://localhost:$LINERA_SERVICE_PORT"
+
+# Set temporary directory for wallets and storage (if not already set) - linCasino pattern
+if [ -z "${LINERA_TMP_DIR:-}" ]; then
+  export LINERA_TMP_DIR="${TMPDIR:-/tmp}/linera_testnet"
+  mkdir -p "$LINERA_TMP_DIR"
+fi
+
+# Export wallet variables for wallet 1 (following linCasino naming)
+export LINERA_WALLET_1="$LINERA_TMP_DIR/wallet_1.json"
+export LINERA_KEYSTORE_1="$LINERA_TMP_DIR/keystore_1.json"
+export LINERA_STORAGE_1="rocksdb:$LINERA_TMP_DIR/client_1.db"
 
 echo ""
 echo -e "${CYAN}=========================================${NC}"
@@ -22,18 +48,27 @@ echo -e "${CYAN}  LineraTrade AI - Complete Startup${NC}"
 echo -e "${CYAN}  Network: Testnet Conway${NC}"
 echo -e "${CYAN}=========================================${NC}"
 echo ""
+echo -e "${CYAN}Connecting to Testnet Conway at $FAUCET_URL${NC}"
+echo -e "${CYAN}Using temporary directory: $LINERA_TMP_DIR${NC}"
+echo ""
 
-# Function to check if a command exists
+# ----------------------------------------------------------
+# [FUNCTION] Check if a command exists
+# ----------------------------------------------------------
 command_exists() {
     command -v "$1" >/dev/null 2>&1
 }
 
-# Function to check if a port is in use
+# ----------------------------------------------------------
+# [FUNCTION] Check if a port is in use
+# ----------------------------------------------------------
 port_in_use() {
     netstat -tuln 2>/dev/null | grep -q ":$1 " || lsof -i ":$1" >/dev/null 2>&1
 }
 
-# Function to kill process on port
+# ----------------------------------------------------------
+# [FUNCTION] Kill process on port
+# ----------------------------------------------------------
 kill_port() {
     local port=$1
     echo -e "${YELLOW}Killing process on port $port...${NC}"
@@ -41,15 +76,65 @@ kill_port() {
     sleep 1
 }
 
+# ----------------------------------------------------------
+# [FUNCTION] Initiate New Wallet from Faucet (linCasino pattern)
+# ----------------------------------------------------------
+initiate_new_wallet_from_faucet() {
+  # Ensure Wallet_Number is passed as the first argument
+  if [ -z "$1" ]; then
+    echo "Error: Missing required parameter <Wallet_Number>. Usage: initiate_new_wallet_from_faucet <Wallet_Number>"
+    exit 1
+  fi
+
+  # Check if keystore already exists
+  WALLET_VAR="LINERA_KEYSTORE_$1"
+  KEYSTORE_PATH="${!WALLET_VAR}"
+  
+  if [ -f "$KEYSTORE_PATH" ]; then
+    echo -e "${GREEN}Keystore for wallet $1 already exists at $KEYSTORE_PATH${NC}"
+    echo -e "${GREEN}Skipping wallet initialization (using existing wallet)${NC}"
+    return 0
+  fi
+
+  linera --with-wallet "$1" wallet init --faucet "$FAUCET_URL"
+  if [ $? -ne 0 ]; then
+      echo -e "${RED}Initiate New Wallet from Faucet failed. Exiting...${NC}"
+      exit 1
+  fi
+  echo -e "${GREEN}✅ Wallet $1 initialized successfully${NC}"
+}
+
+# ----------------------------------------------------------
+# [FUNCTION] Open Chain from Faucet (linCasino pattern)
+# ----------------------------------------------------------
+open_chain_from_faucet() {
+  # Ensure Wallet_Number is passed as the first argument
+  if [ -z "$1" ]; then
+    echo "Error: Missing required parameter <Wallet_Number>. Usage: open_chain_from_faucet <Wallet_Number>"
+    exit 1
+  fi
+
+  linera --with-wallet "$1" wallet request-chain --faucet "$FAUCET_URL"
+  if [ $? -ne 0 ]; then
+      echo -e "${RED}Open Chain from Faucet failed. Exiting...${NC}"
+      exit 1
+  fi
+}
+
+# -----------------------------------------------------------------------------------------------------------------
 # Check prerequisites
+# -----------------------------------------------------------------------------------------------------------------
 echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo -e "${BLUE}Step 1: Checking Prerequisites${NC}"
 echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo ""
 
+# Verify linera is available (same check as linCasino)
 if ! command_exists linera; then
     echo -e "${RED}❌ Linera CLI not found${NC}"
-    echo "Please install Linera CLI first"
+    echo "Please install Linera CLI first:"
+    echo "  cargo install --locked linera-service@0.15.8"
+    echo "  cargo install --locked linera-storage-service@0.15.8"
     exit 1
 fi
 
@@ -74,95 +159,79 @@ fi
 echo -e "${GREEN}✅ All prerequisites installed${NC}"
 echo ""
 
-# Initialize or check wallet
+# Version compatibility check
+echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+echo -e "${BLUE}Step 1.5: Version Compatibility Check${NC}"
+echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+echo ""
+
+echo -e "${YELLOW}Checking Linera CLI version...${NC}"
+linera --version 2>/dev/null || echo -e "${RED}Warning: Could not determine linera version${NC}"
+echo ""
+echo -e "${YELLOW}⏰ Important: Ensure your system clock is synchronized for testnet operations.${NC}"
+echo -e "   If you encounter timestamp errors, run: ${CYAN}sudo ntpdate pool.ntp.org${NC}"
+echo ""
+echo -e "${YELLOW}📍 Wallet Configuration:${NC}"
+echo -e "   LINERA_TMP_DIR:    ${CYAN}$LINERA_TMP_DIR${NC}"
+echo -e "   LINERA_WALLET_1:   ${CYAN}$LINERA_WALLET_1${NC}"
+echo -e "   LINERA_KEYSTORE_1: ${CYAN}$LINERA_KEYSTORE_1${NC}"
+echo -e "   LINERA_STORAGE_1:  ${CYAN}$LINERA_STORAGE_1${NC}"
+echo ""
+
+# -----------------------------------------------------------------------------------------------------------------
+# Wallet Initialization (using linCasino functions)
+# -----------------------------------------------------------------------------------------------------------------
 echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo -e "${BLUE}Step 2: Wallet Initialization${NC}"
 echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo ""
 
-if [ -f "$WALLET_DIR/wallet.json" ]; then
-    echo -e "${GREEN}✅ Wallet already exists${NC}"
-    WALLET_OUTPUT=$(linera wallet show 2>&1)
-    echo "$WALLET_OUTPUT"
-else
-    echo -e "${YELLOW}Initializing new wallet with Testnet Conway faucet...${NC}"
-    linera wallet init --faucet $TESTNET_FAUCET
-    
-    if [ $? -eq 0 ]; then
-        echo -e "${GREEN}✅ Wallet initialized successfully${NC}"
-    else
-        echo -e "${RED}❌ Wallet initialization failed${NC}"
-        exit 1
-    fi
-fi
+# Initialize wallet 1 using linCasino function
+INITIATE_WALLET_1=$(initiate_new_wallet_from_faucet 1)
+echo "$INITIATE_WALLET_1"
 
 echo ""
 
-# Get or request chain
+# -----------------------------------------------------------------------------------------------------------------
+# Chain Setup (using linCasino functions)
+# -----------------------------------------------------------------------------------------------------------------
 echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo -e "${BLUE}Step 3: Chain Setup${NC}"
 echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo ""
 
-WALLET_OUTPUT=$(linera wallet show 2>&1)
-CHAIN_ID=$(echo "$WALLET_OUTPUT" | grep -B 1 "DEFAULT" | grep "Chain ID:" | grep -oP '[a-f0-9]{64}')
+# Request default chain using linCasino function
+echo -e "${YELLOW}Requesting default chain from Testnet Conway faucet...${NC}"
+OPEN_NEW_DEFAULT_CHAIN=$(open_chain_from_faucet 1)
+mapfile -t StringArray <<< "$OPEN_NEW_DEFAULT_CHAIN"
+CHAIN_ID=${StringArray[0]}
 
-if [ -z "$CHAIN_ID" ]; then
-    echo -e "${YELLOW}No default chain found. Requesting new chain...${NC}"
-    CHAIN_OUTPUT=$(linera wallet request-chain --faucet $TESTNET_FAUCET 2>&1)
-    
-    if [ $? -eq 0 ]; then
-        echo -e "${GREEN}✅ Chain requested successfully${NC}"
-        CHAIN_ID=$(echo "$CHAIN_OUTPUT" | grep -oP '[a-f0-9]{64}' | head -n 1)
-        echo -e "${GREEN}Chain ID: $CHAIN_ID${NC}"
-    else
-        echo -e "${RED}❌ Failed to request chain${NC}"
-        exit 1
-    fi
-else
-    echo -e "${GREEN}✅ Using existing chain${NC}"
-    echo -e "${GREEN}Chain ID: $CHAIN_ID${NC}"
-fi
-
-# Check balance
-BALANCE=$(linera query-balance 2>&1 | tail -n 1)
-echo -e "${GREEN}Balance: $BALANCE${NC}"
+echo -e "${GREEN}✅ Default chain created: $CHAIN_ID${NC}"
 echo ""
 
-# Build and deploy application
+# Sync and check balance (linCasino pattern)
+linera --with-wallet 1 sync && linera --with-wallet 1 query-balance
+sleep 1
+
+echo ""
+
+# -----------------------------------------------------------------------------------------------------------------
+# Build and Deploy Application (linCasino pattern - uses project publish-and-create)
+# -----------------------------------------------------------------------------------------------------------------
 echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-echo -e "${BLUE}Step 4: Building & Deploying Application${NC}"
+echo -e "${BLUE}Step 4: Deploying Application${NC}"
 echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo ""
 
 cd linera-app
 
-echo -e "${YELLOW}Building WASM bytecode...${NC}"
-cargo build --release --target wasm32-unknown-unknown
-
-if [ $? -ne 0 ]; then
-    echo -e "${RED}❌ Build failed${NC}"
-    exit 1
-fi
-
-echo -e "${GREEN}✅ Build successful${NC}"
-echo ""
-
-CONTRACT_WASM="target/wasm32-unknown-unknown/release/linera_trade_ai.wasm"
-SERVICE_WASM="target/wasm32-unknown-unknown/release/linera_trade_ai.wasm"
-
-if [ ! -f "$CONTRACT_WASM" ]; then
-    echo -e "${RED}❌ WASM file not found${NC}"
-    exit 1
-fi
-
-echo -e "${YELLOW}Deploying to Testnet Conway...${NC}"
+echo -e "${YELLOW}Deploying Trade AI application to Testnet Conway...${NC}"
+echo -e "${CYAN}(Using 'project publish-and-create' which auto-builds - linCasino pattern)${NC}"
 echo -e "${CYAN}(This may take 5-15 minutes)${NC}"
 echo ""
 
-DEPLOY_OUTPUT=$(linera --wait-for-outgoing-messages publish-and-create \
-    "$CONTRACT_WASM" \
-    "$SERVICE_WASM" 2>&1)
+# Deploy using linCasino pattern: project publish-and-create (auto-builds and deploys)
+DEPLOY_OUTPUT=$(linera --with-wallet 1 --wait-for-outgoing-messages project publish-and-create . trade-ai 2>&1)
 
 if [ $? -eq 0 ]; then
     echo -e "${GREEN}✅ Deployment successful!${NC}"
@@ -180,6 +249,7 @@ if [ $? -eq 0 ]; then
     echo -e "${GREEN}Application ID: $APP_ID${NC}"
 else
     echo -e "${RED}❌ Deployment failed${NC}"
+    echo "$DEPLOY_OUTPUT"
     exit 1
 fi
 
@@ -196,11 +266,11 @@ echo ""
 cat > frontend/.env.local << EOF
 NEXT_PUBLIC_LINERA_APP_ID=$APP_ID
 NEXT_PUBLIC_LINERA_CHAIN_ID=$CHAIN_ID
-NEXT_PUBLIC_LINERA_SERVICE_URL=http://localhost:8081
+NEXT_PUBLIC_LINERA_SERVICE_URL=http://localhost:$LINERA_SERVICE_PORT
 NEXT_PUBLIC_LINERA_NETWORK=testnet-conway
-NEXT_PUBLIC_LINERA_FAUCET_URL=$TESTNET_FAUCET
-NEXT_PUBLIC_API_URL=http://localhost:3001
-NEXT_PUBLIC_WS_URL=http://localhost:3001
+NEXT_PUBLIC_LINERA_FAUCET_URL=$FAUCET_URL
+NEXT_PUBLIC_API_URL=http://localhost:$BACKEND_PORT
+NEXT_PUBLIC_WS_URL=http://localhost:$BACKEND_PORT
 EOF
 
 echo -e "${GREEN}✅ Frontend config updated${NC}"
@@ -209,9 +279,9 @@ echo -e "${GREEN}✅ Frontend config updated${NC}"
 cat > backend/.env.local << EOF
 # Linera Configuration - Testnet Conway
 LINERA_NETWORK=testnet-conway
-LINERA_FAUCET_URL=$TESTNET_FAUCET
-LINERA_SERVICE_URL=http://localhost:8081
-LINERA_RPC_URL=http://localhost:8081
+LINERA_FAUCET_URL=$FAUCET_URL
+LINERA_SERVICE_URL=http://localhost:$LINERA_SERVICE_PORT
+LINERA_RPC_URL=http://localhost:$LINERA_SERVICE_PORT
 LINERA_APP_ID=$APP_ID
 LINERA_CHAIN_ID=$CHAIN_ID
 
@@ -297,9 +367,9 @@ echo -e "${BLUE}Step 8: Starting Services${NC}"
 echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo ""
 
-# Start Linera service in background
-echo -e "${YELLOW}Starting Linera service on port 8081...${NC}"
-nohup linera service --port 8081 > linera-service.log 2>&1 &
+# Start Linera service in background (linCasino pattern with --with-wallet 1)
+echo -e "${YELLOW}Starting Linera service on port $LINERA_SERVICE_PORT...${NC}"
+nohup linera --max-pending-message-bundles $LINERA_MAX_PENDING_MESSAGES --with-wallet 1 service --port $LINERA_SERVICE_PORT > linera-service.log 2>&1 &
 LINERA_PID=$!
 echo $LINERA_PID > .linera.pid
 sleep 3
@@ -314,10 +384,12 @@ fi
 
 # Start backend in background
 echo -e "${YELLOW}Starting backend on port 3001...${NC}"
+SCRIPT_DIR="$(pwd)"
+touch /tmp/backend.log
 cd backend
-nohup npm run dev > ../backend.log 2>&1 &
+nohup npm run dev > /tmp/backend.log 2>&1 &
 BACKEND_PID=$!
-echo $BACKEND_PID > ../.backend.pid
+echo $BACKEND_PID > /tmp/.backend.pid
 cd ..
 sleep 5
 
@@ -325,16 +397,17 @@ if ps -p $BACKEND_PID > /dev/null; then
     echo -e "${GREEN}✅ Backend started (PID: $BACKEND_PID)${NC}"
 else
     echo -e "${RED}❌ Backend failed to start${NC}"
-    cat backend.log
+    cat /tmp/backend.log
     exit 1
 fi
 
 # Start frontend in background
 echo -e "${YELLOW}Starting frontend on port 3000...${NC}"
+touch /tmp/frontend.log
 cd frontend
-nohup npm run dev > ../frontend.log 2>&1 &
+nohup npm run dev > /tmp/frontend.log 2>&1 &
 FRONTEND_PID=$!
-echo $FRONTEND_PID > ../.frontend.pid
+echo $FRONTEND_PID > /tmp/.frontend.pid
 cd ..
 sleep 5
 
@@ -342,7 +415,7 @@ if ps -p $FRONTEND_PID > /dev/null; then
     echo -e "${GREEN}✅ Frontend started (PID: $FRONTEND_PID)${NC}"
 else
     echo -e "${RED}❌ Frontend failed to start${NC}"
-    cat frontend.log
+    cat /tmp/frontend.log
     exit 1
 fi
 

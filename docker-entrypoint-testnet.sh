@@ -156,3 +156,4 @@ echo ""
 wait -n "${LINERA_PID}" "${BACKEND_PID}" "${FRONTEND_PID}"
 
 
+

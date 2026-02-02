@@ -76,3 +76,4 @@ Write-Host "  1) Run backend:  cd backend  && npm run dev" -ForegroundColor Whit
 Write-Host "  2) Run frontend: cd frontend && npm run dev" -ForegroundColor White
 Write-Host ""
 
+
