@@ -20,8 +20,8 @@ RUN apt-get update && apt-get install -y \
     git \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Linera tools
-RUN cargo install --locked linera-service@0.15.7 linera-storage-service@0.15.7
+# Install Linera tools (linera CLI + linera-service for GraphQL)
+RUN cargo install --locked linera@0.15.7 linera-service@0.15.7
 
 # ================================================
 # Runtime Stage
@@ -55,7 +55,6 @@ RUN rustup target add wasm32-unknown-unknown
 # Copy Linera binaries from builder
 COPY --from=builder /usr/local/cargo/bin/linera /usr/local/bin/linera
 COPY --from=builder /usr/local/cargo/bin/linera-service /usr/local/bin/linera-service
-COPY --from=builder /usr/local/cargo/bin/linera-storage-service /usr/local/bin/linera-storage-service
 
 # Set working directory
 WORKDIR /build
