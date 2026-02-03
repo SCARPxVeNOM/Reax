@@ -21,7 +21,7 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Linera tools (linera CLI + linera-service for GraphQL)
-RUN cargo install --locked linera@0.15.7 linera-service@0.15.7
+RUN cargo install --locked linera-service@0.15.7
 
 # ================================================
 # Runtime Stage
