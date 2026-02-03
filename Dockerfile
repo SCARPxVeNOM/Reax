@@ -1,8 +1,10 @@
+# syntax=docker/dockerfile:1.4
 # ================================================
 # ReaX Dockerfile
 # ================================================
 # Multi-stage build for production-ready container
 # Includes: Linera CLI, Node.js, Frontend, Backend
+# Uses BuildKit cache mounts for faster rebuilds
 # ================================================
 
 FROM rust:1.86-slim AS builder
@@ -20,8 +22,12 @@ RUN apt-get update && apt-get install -y \
     git \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Linera tools (linera CLI + linera-service for GraphQL)
-RUN cargo install --locked linera-service@0.15.7
+# Install Linera tools with cached dependencies (BuildKit)
+# Cache mounts preserve compiled crates between builds
+RUN --mount=type=cache,target=/usr/local/cargo/registry \
+    --mount=type=cache,target=/usr/local/cargo/git \
+    --mount=type=cache,target=/root/.cargo/registry \
+    cargo install --locked linera-service@0.15.7
 
 # ================================================
 # Runtime Stage
@@ -52,9 +58,8 @@ ENV PATH="/root/.cargo/bin:${PATH}"
 # Add wasm32 target
 RUN rustup target add wasm32-unknown-unknown
 
-# Copy Linera binaries from builder
+# Copy Linera binary from builder (linera CLI includes the 'service' subcommand)
 COPY --from=builder /usr/local/cargo/bin/linera /usr/local/bin/linera
-COPY --from=builder /usr/local/cargo/bin/linera-service /usr/local/bin/linera-service
 
 # Set working directory
 WORKDIR /build
