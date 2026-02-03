@@ -4,9 +4,9 @@ import { JupiterService } from './jupiter-service';
 import { BinanceService } from './binance-service';
 
 export class DEXRouter {
-  private raydiumService: RaydiumService;
-  private jupiterService: JupiterService;
-  private binanceService: BinanceService;
+  public raydiumService: RaydiumService;
+  public jupiterService: JupiterService;
+  public binanceService: BinanceService;
 
   constructor() {
     this.raydiumService = new RaydiumService();
@@ -81,13 +81,13 @@ export class DEXRouter {
     switch (quote.dex) {
       case DEX.RAYDIUM:
         return this.raydiumService.executeSwap(params);
-      
+
       case DEX.JUPITER:
         return this.jupiterService.executeSwap(params);
-      
+
       case DEX.BINANCE:
         return this.binanceService.executeSwap(params);
-      
+
       default:
         throw new Error(`Unsupported DEX: ${quote.dex}`);
     }
@@ -101,3 +101,6 @@ export class DEXRouter {
     return this.compareRoutes(quotes);
   }
 }
+
+// Singleton instance for use in routes
+export const dexRouter = new DEXRouter();

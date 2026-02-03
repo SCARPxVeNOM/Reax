@@ -4,7 +4,7 @@ mod state;
 
 use linera_sdk::{Service, ServiceRuntime};
 use linera_sdk::abi::WithServiceAbi;
-use abi::{LineraTradeAbi, Order, Signal, Strategy, Query, QueryResponse};
+use abi::{LineraTradeAbi, Order, Signal, Strategy, Query, QueryResponse, SafetyConfig, ValidatedOrder, PredictionMarket, StrategyMarketLink, StrategyVersion};
 use self::state::LineraTradeState;
 
 linera_sdk::service!(LineraTradeService);
@@ -46,6 +46,27 @@ impl Service for LineraTradeService {
                 offset,
             } => QueryResponse::Orders(self.get_orders(strategy_id, status, limit, offset).await),
             Query::GetOrder { id } => QueryResponse::Order(self.get_order(id).await),
+            // Safety & Validation Queries
+            Query::GetSafetyConfig { owner } => {
+                QueryResponse::SafetyConfig(self.get_safety_config(owner).await)
+            }
+            Query::GetOrderValidation { order_id } => {
+                QueryResponse::OrderValidation(self.get_order_validation(order_id).await)
+            }
+            // Prediction Market Queries
+            Query::GetPredictionMarkets { limit, offset } => {
+                QueryResponse::PredictionMarkets(self.get_prediction_markets(limit, offset).await)
+            }
+            Query::GetPredictionMarket { id } => {
+                QueryResponse::PredictionMarket(self.get_prediction_market(id).await)
+            }
+            Query::GetStrategyMarketLinks { strategy_id } => {
+                QueryResponse::StrategyMarketLinks(self.get_strategy_market_links(strategy_id).await)
+            }
+            // Strategy Enhancement Queries (Phase 2)
+            Query::GetStrategyVersions { strategy_id } => {
+                QueryResponse::StrategyVersions(self.get_strategy_versions(strategy_id).await)
+            }
         }
     }
 }
@@ -158,5 +179,68 @@ impl LineraTradeService {
 
     async fn get_order(&self, id: u64) -> Option<Order> {
         self.state.orders.get(&id).await.ok().flatten()
+    }
+
+    // Safety & Validation query methods
+    async fn get_safety_config(&self, owner: String) -> Option<SafetyConfig> {
+        self.state.safety_configs.get(&owner).await.ok().flatten()
+    }
+
+    async fn get_order_validation(&self, order_id: u64) -> Option<ValidatedOrder> {
+        self.state.validated_orders.get(&order_id).await.ok().flatten()
+    }
+
+    // Prediction Market query methods
+    async fn get_prediction_markets(&self, limit: usize, offset: usize) -> Vec<PredictionMarket> {
+        let mut markets = Vec::new();
+        let counter = *self.state.market_counter.get();
+
+        let start = if offset >= counter as usize {
+            return markets;
+        } else {
+            counter.saturating_sub(offset as u64)
+        };
+
+        let end = start.saturating_sub(limit as u64);
+
+        for id in (end..=start).rev() {
+            if let Ok(Some(market)) = self.state.prediction_markets.get(&id).await {
+                markets.push(market);
+            }
+        }
+
+        markets
+    }
+
+    async fn get_prediction_market(&self, id: u64) -> Option<PredictionMarket> {
+        self.state.prediction_markets.get(&id).await.ok().flatten()
+    }
+
+    async fn get_strategy_market_links(&self, strategy_id: u64) -> Vec<StrategyMarketLink> {
+        let mut links = Vec::new();
+        if let Ok(Some(link)) = self.state.strategy_market_links.get(&strategy_id).await {
+            links.push(link);
+        }
+        links
+    }
+
+    // Strategy Enhancement query methods (Phase 2)
+    async fn get_strategy_versions(&self, strategy_id: u64) -> Vec<StrategyVersion> {
+        let mut versions = Vec::new();
+        
+        // Get current strategy to find max version
+        if let Ok(Some(current)) = self.state.strategies.get(&strategy_id).await {
+            let max_version = current.version;
+            
+            // Iterate through all versions
+            for version in 1..=max_version {
+                let version_key = format!("{}:{}", strategy_id, version);
+                if let Ok(Some(entry)) = self.state.strategy_versions.get(&version_key).await {
+                    versions.push(entry);
+                }
+            }
+        }
+        
+        versions
     }
 }

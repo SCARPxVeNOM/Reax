@@ -1,539 +1,433 @@
-# 🚀 ReaX - Complete Platform Documentation
+# ReaX - Microchain Social Trading Platform
 
-**A next-generation decentralized trading platform built on Linera microchains**
+<p align="center">
+  <img src="https://img.shields.io/badge/Linera-Microchains-purple?style=for-the-badge" alt="Linera" />
+  <img src="https://img.shields.io/badge/Solana-DEX%20Trading-00D4AA?style=for-the-badge" alt="Solana" />
+  <img src="https://img.shields.io/badge/Docker-Ready-2496ED?style=for-the-badge&logo=docker" alt="Docker" />
+  <img src="https://img.shields.io/badge/Next.js-14-black?style=for-the-badge&logo=next.js" alt="Next.js" />
+</p>
 
-**Status**: ✅ **PRODUCTION READY** | **Version**: 2.2.0 | **Date**: January 11, 2026
-
----
-
-## ⚡ Quick Start - Get Running in 80 Seconds!
-
-### Option 1: Docker (Recommended - Easiest!)
-
-```bash
-docker compose up -d --build
-```
-
-**Then visit**: http://localhost:3000
-
-> **Testnet Conway flow (faucet + deploy inside container)**  
-> The Docker image entrypoint runs the same steps as `start-all.sh`: initializes a wallet via `https://faucet.testnet-conway.linera.net/`, deploys the Linera app, writes `backend/.env.local` and `frontend/.env.local` inside the container, then starts Linera service (8081), backend (3001), and frontend (3000). Postgres/Redis are started from `compose.yaml`.
-
-### Option 2: Linux/macOS/WSL
-
-```bash
-chmod +x run.bash
-./run.bash
-```
+**ReaX** is a social trading platform that combines **Linera microchains** for isolated strategy execution with **Solana DEX integrations** (Jupiter & Raydium) for real token swaps. Create strategies, follow top traders, and execute trades—all with on-chain verification.
 
 ---
 
-## 🎯 What You Get
+## 🌟 Features
 
-A complete trading platform with:
-
-- ✅ **Linera Microchains** - Decentralized blockchain infrastructure (SDK 0.15.7)
-- ✅ **Multi-DEX Trading** - Raydium, Jupiter, Binance integration with intelligent routing
-- ✅ **PineScript Interpreter** - Full TradingView v5 compatibility with backtesting
-- ✅ **Visual Strategy Builder** - Drag-and-drop block-based design with React Flow
-- ✅ **Social Trading** - Follow and replicate top strategies with automatic trade replication
-- ✅ **Real-Time Updates** - WebSocket notifications and live price feeds
-- ✅ **Analytics Dashboard** - Live metrics, performance tracking, and event streaming
-- ✅ **Professional UI** - Modern glass morphism design with dark theme
-- ✅ **6 Feature-Rich Pages** - Complete user interface with 28+ components
-- ✅ **Multi-Channel Notifications** - In-app, email, and webhook support
-
----
-
-
-
-## 🌐 Service Endpoints
-
-After startup, access these services:
-
-| Service | Port | URL | Description |
-|---------|------|-----|-------------|
-| **Frontend** | 3000 | http://localhost:3000 | Main web application |
-| **Backend API** | 3001 | http://localhost:3001 | REST API + WebSocket |
-| **Linera GraphQL** | 8081 | http://localhost:8081 | Blockchain queries |
-| **Linera Faucet** | 8080 | http://localhost:8080 | Token distribution |
-
----
-
-## 📱 Available Pages
-
-| Page | Route | Features |
-|------|-------|----------|
-| **Home** | `/` | Platform overview, stats, features |
-| **Trading** | `/trading` | Multi-DEX trading, quotes, swaps |
-| **Strategies** | `/strategies` | PineScript editor, visual builder |
-| **Social** | `/social` | Strategy marketplace, follow traders |
-| **Microchains** | `/microchains` | Chain management, monitoring |
-| **Analytics** | `/analytics` | Live metrics, performance data |
-
----
-
-## 🆕 Recent Updates (v2.2.0)
-
-### UI Enhancements (January 2026)
-- ✨ **Professional Design System**: Glass morphism with dark theme
-- 🎨 **Animated Backgrounds**: Pulsing gradient orbs for visual depth
-- 📊 **Live Price Ticker**: Real-time price updates on homepage
-- 🔔 **Enhanced Components**: 28+ reusable React components
-- 💫 **Smooth Animations**: CSS-based animations for better performance
-- 📱 **Improved UX**: Better visual hierarchy and user feedback
-
-### Linera SDK Update (December 2024)
-- 🔄 **SDK 0.15.7**: Updated for Testnet Conway compatibility
-- 🌐 **Testnet Conway**: Full support for latest Linera testnet
-- 📦 **Dependency Updates**: Explicit async-graphql and tokio versions
-- 🐳 **Docker Updates**: Updated Linera installation in Dockerfile
-
-### Feature Additions
-- 🔔 **Multi-Channel Notifications**: In-app, email, and webhook support
-- 🧭 **Intelligent DEX Router**: Parallel quote fetching and best price selection
-- 📈 **Enhanced Analytics**: Live metrics, performance tracking, recent trades feed
-- 🔄 **Improved Social Trading**: Better trade replication and follower management
-
----
-
-## 🎯 Key Features
-
-### 🔗 Linera Microchains
-- Decentralized blockchain infrastructure
-- Immutable strategy storage
-- On-chain trade execution
-- Cross-chain communication
-- **SDK 0.15.7 integration** (Testnet Conway compatible)
-- GraphQL API for queries and mutations
-- Automatic state management and replication
-
-### 💱 Multi-DEX Integration
-- **Raydium**: Solana's leading AMM (Transaction API)
-- **Jupiter**: Best price aggregation (API v6)
-- **Binance**: Centralized exchange (REST + WebSocket)
-- **Intelligent DEX Router**: Parallel quote fetching from multiple DEXes
-- Real-time quote comparison with best price selection
-- Automatic best route selection
-- Support for base-in and base-out swaps
-- Versioned transaction support for Solana
-
-### 📊 Strategy Development
-- **PineScript v5 Interpreter**: Full TradingView compatibility
-  - Lexer, parser, compiler, executor
-  - Technical indicators (SMA, EMA, RSI, MACD, BB)
-  - Backtesting engine with performance metrics
-- **Visual Strategy Builder**: Drag-and-drop design
-  - Block library (indicators, conditions, actions, logic)
-  - Validator with dependency detection
-  - Code generator (PineScript + TypeScript)
-
-### 👥 Social Trading
-- Strategy marketplace with performance metrics
-- Follow top-performing strategies
-- **Automatic trade replication** with proportional scaling
-- Proportional position sizing based on allocation percentage
-- Risk management controls (max position size, auto-follow)
-- Real-time notifications via WebSocket
-- On-chain follower tracking and trade replication status
-
-### 📈 Analytics Dashboard
-- **Live price ticker** with real-time updates
-- Strategy performance metrics and statistics
-- Real-time event streaming via WebSocket
-- Portfolio analytics and tracking
-- Performance charts and visualizations
-- Recent trades feed with profit indicators
-- Key metrics cards (strategies, volume, DEXes, traders, success rate)
+| Feature | Description |
+|---------|-------------|
+| ⛓️ **Microchain Profiles** | Create isolated on-chain identities on Linera |
+| 📊 **Strategy Builder** | Visual, Image-based, or PineScript strategy creation |
+| 👥 **Social Discovery** | Tinder-like swipe interface to discover and follow traders |
+| 🔄 **Trade Replication** | Automatically copy trades from followed strategies |
+| 💱 **DEX Integration** | Execute swaps on Jupiter & Raydium DEXs |
+| 🛡️ **Safety Controls** | Position limits, stop-loss requirements, fail-safes |
+| 📈 **Analytics** | Real-time leaderboards and performance tracking |
 
 ---
 
 ## 🏗️ Architecture
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│                Frontend (Next.js 14)                     │
-│  • Trading Interface  • Strategy Builder                 │
-│  • Social Feed  • Analytics  • Microchain Management     │
-│                    Port 3000                             │
-└────────────────────┬────────────────────────────────────┘
-                     │ REST API + WebSocket
-                     ▼
-┌─────────────────────────────────────────────────────────┐
-│              Backend (Express.js + TypeScript)           │
-│  • DEX Router  • PineScript Interpreter                  │
-│  • Strategy Validator  • Notification System             │
-│  • WebSocket Server  • Database Layer                    │
-│                    Port 3001                             │
-└────────────────────┬────────────────────────────────────┘
-                     │ GraphQL
-                     ▼
-┌─────────────────────────────────────────────────────────┐
-│           Linera GraphQL Service (Port 8081)             │
-│  • Query Operations  • Mutations  • Subscriptions        │
-└────────────────────┬────────────────────────────────────┘
-                     │
-                     ▼
-┌─────────────────────────────────────────────────────────┐
-│         Linera Microchain Network (Rust/WASM)            │
-│  • Trade AI Contract  • State Management                 │
-│  • DEX Orders  • Strategy Execution  • Social Trading    │
-└─────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                              ReaX Platform                                  │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│   ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐        │
+│   │    Frontend     │    │     Backend     │    │  Linera Service │        │
+│   │   (Next.js 14)  │◄──►│    (Express)    │◄──►│   (GraphQL)     │        │
+│   │   Port 3000     │    │    Port 3001    │    │    Port 8081    │        │
+│   └─────────────────┘    └─────────────────┘    └─────────────────┘        │
+│           │                      │                      │                   │
+│           ▼                      ▼                      ▼                   │
+│   ┌─────────────────────────────────────────────────────────────────┐      │
+│   │                    Linera Microchain App (WASM)                  │      │
+│   │                                                                  │      │
+│   │  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────────┐  │      │
+│   │  │  Strategies │  │   Orders    │  │  Trade Replication      │  │      │
+│   │  │  & Signals  │  │ & DEX Swaps │  │  & Social Following     │  │      │
+│   │  └─────────────┘  └─────────────┘  └─────────────────────────┘  │      │
+│   │                                                                  │      │
+│   │  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────────┐  │      │
+│   │  │   Safety    │  │  Prediction │  │  Strategy Versioning    │  │      │
+│   │  │   Controls  │  │   Markets   │  │  & History              │  │      │
+│   │  └─────────────┘  └─────────────┘  └─────────────────────────┘  │      │
+│   └─────────────────────────────────────────────────────────────────┘      │
+│                                                                             │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                           External Integrations                             │
+│                                                                             │
+│   ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐        │
+│   │  Jupiter DEX    │    │  Raydium DEX    │    │  Solana RPC     │        │
+│   │  (Aggregator)   │    │  (AMM Pools)    │    │  (Blockchain)   │        │
+│   └─────────────────┘    └─────────────────┘    └─────────────────┘        │
+│                                                                             │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                            Infrastructure                                   │
+│                                                                             │
+│   ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐        │
+│   │   PostgreSQL    │    │     Redis       │    │  Linera Wallet  │        │
+│   │   (Database)    │    │    (Cache)      │    │   (Keystore)    │        │
+│   └─────────────────┘    └─────────────────┘    └─────────────────┘        │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## 🛠️ Technology Stack
+## 🔗 Linera Microchain Contract
 
-### Frontend
-- **Framework**: Next.js 14 (App Router)
-- **Language**: TypeScript
-- **UI**: React 18, Tailwind CSS
-- **Design System**: Glass morphism, dark theme, animated backgrounds
-- **Real-time**: Socket.io Client
-- **Charts**: Recharts
-- **Editor**: Monaco Editor (VS Code)
-- **Flow**: React Flow (for visual strategy builder)
-- **Components**: 28+ reusable components
+The core of ReaX is a **Linera WASM smart contract** that provides:
 
-### Backend
-- **Runtime**: Node.js
-- **Framework**: Express.js
-- **Language**: TypeScript
-- **WebSocket**: Socket.io (real-time updates)
-- **Database**: PostgreSQL
-- **ORM**: Custom repositories
-- **Services**: DEX Router, PineScript Service, Notification Service, WebSocket Server
-- **Multi-Channel Notifications**: In-app, email, webhook support
+### On-Chain Operations
 
-### Blockchain
-- **Platform**: Linera Protocol
-- **Language**: Rust
-- **Target**: WASM32
-- **SDK**: Linera SDK 0.15.7 (Testnet Conway)
-- **Toolchain**: Rust 1.86
-- **Network**: Testnet Conway
+| Operation | Description |
+|-----------|-------------|
+| `CreateStrategy` | Deploy a new trading strategy to your microchain |
+| `ActivateStrategy` | Enable a strategy for live trading |
+| `CreateDEXOrder` | Submit a swap order (Jupiter/Raydium) |
+| `ExecuteDEXOrder` | Record swap execution with tx signature |
+| `FollowStrategy` | Subscribe to another trader's strategy |
+| `ReplicateTrade` | Copy a trade with custom scaling |
+| `CreateSafetyConfig` | Set position limits and risk controls |
+| `ValidateOrder` | Run safety checks before execution |
+| `CreatePredictionMarket` | Create markets for strategy triggers |
 
-### DEX Integration
-- **Raydium**: Transaction API
-- **Jupiter**: Aggregator API v6
-- **Binance**: REST + WebSocket API
+### Data Structures
+
+```rust
+// Strategy with versioning and risk parameters
+pub struct Strategy {
+    pub id: u64,
+    pub owner: String,
+    pub name: String,
+    pub strategy_type: StrategyType,  // Form-based or DSL
+    pub version: u64,                  // Auto-incremented
+    pub source: StrategySource,        // Manual, Community, Curated
+    pub risk_percentage: f64,          // Max % to risk per trade
+    pub max_exposure: f64,             // Max total exposure (USD)
+    pub slippage_bps: u16,             // Max slippage tolerance
+}
+
+// DEX Order with multi-hop routing
+pub struct DEXOrder {
+    pub id: u64,
+    pub dex: DEX,                      // Jupiter, Raydium
+    pub input_mint: String,
+    pub output_mint: String,
+    pub route_path: Vec<RouteHop>,     // Multi-hop support
+    pub conditional_trigger: Option<ConditionalTrigger>,
+    pub execution_mode: ExecutionMode, // Immediate, Conditional, Scheduled
+}
+
+// Safety configuration
+pub struct SafetyConfig {
+    pub max_position_per_token: f64,
+    pub max_total_exposure: f64,
+    pub max_slippage_bps: u16,
+    pub max_loss_percentage: f64,
+    pub require_stop_loss: bool,
+    pub fail_safe_enabled: bool,
+}
+```
+
+### Events Emitted
+
+The contract emits events for real-time tracking:
+- `StrategyCreated`, `StrategyActivated`, `StrategyUpdated`
+- `DEXOrderCreated`, `DEXOrderExecuted`
+- `StrategyFollowed`, `TradeReplicated`
+- `OrderValidated`, `SafetyConfigCreated`
+- `PredictionMarketCreated`, `MarketProbabilityUpdated`
 
 ---
 
-## 📊 Project Statistics
+## 🐳 Docker Quick Start
 
-### Code
-- **Total Files**: ~50
-- **Lines of Code**: ~8,500
-- **Documentation**: ~20,000 lines
-- **Languages**: TypeScript, Rust, SQL
-
-### Features
-- **Pages**: 6 (Home, Trading, Strategies, Social, Microchains, Analytics)
-- **Components**: 28+ React components (Visual Builder, Trading Interface, Analytics, etc.)
-- **API Routes**: 4 route groups (DEX, PineScript, Strategies, Visual Strategy)
-- **Services**: 7 backend services (DEX Router, PineScript, Notifications, WebSocket, etc.)
-- **DEX Integrations**: 3 (Raydium, Jupiter, Binance)
-- **UI Enhancements**: Professional glass morphism design, animated backgrounds, live tickers
-
-### Documentation
-- **Total Guides**: 24+ comprehensive guides
-- **Quick Starts**: 3
-- **Platform Guides**: 2
-- **Main Docs**: 3
-- **Testing Guides**: 2
-- **Status Reports**: 5
-- **Architecture Docs**: 2
-- **Implementation Records**: 5
-- **Update Guides**: Linera SDK 0.15.7 migration, UI enhancements
-
----
-
-### Quick Installation
-
-**Docker (Recommended):**
-```bash
-docker compose up -d --build
-```
-
-**Windows:**
-```powershell
-.\start-platform.ps1
-```
-
-**Linux/macOS:**
-```bash
-chmod +x run.bash
-./run.bash
-```
-
----
-
-## 🧪 Testing
-
-### Verify Services
+The easiest way to run ReaX is with Docker Compose:
 
 ```bash
-# Frontend
-curl http://localhost:3000
+# Clone the repository
+git clone https://github.com/your-org/reax.git
+cd reax
 
-# Backend health
-curl http://localhost:3001/health
+# Start all services
+docker-compose up -d
 
-# Linera service
-curl http://localhost:8081
+# Watch startup logs (first run takes 10-20 min)
+docker-compose logs -f reax-app
 ```
 
-### Test Features
+### What Happens Automatically
 
-1. **Strategy Deployment**
-   - Go to http://localhost:3000/strategies
-   - Write a PineScript strategy
-   - Click "Deploy to Microchain"
-   - Verify deployment confirmation
+1. ✅ **PostgreSQL & Redis** start with health checks
+2. ✅ **Linera wallet** initializes with Conway Testnet faucet
+3. ✅ **WASM contract** compiles and deploys to microchain
+4. ✅ **Environment files** auto-generated for frontend/backend
+5. ✅ **All services** start with proper configuration
 
-2. **Social Trading**
-   - Go to http://localhost:3000/social
-   - View deployed strategies
-   - Click "Follow Strategy"
-   - Set allocation and risk limits
-   - Verify real-time updates
+### Services Available
 
-3. **Microchains**
-   - Go to http://localhost:3000/microchains
-   - Check connection status
-   - View Chain ID and App ID
-   - Monitor statistics
+| Service | URL | Description |
+|---------|-----|-------------|
+| 🎨 Frontend | http://localhost:3000 | Next.js web app |
+| 🔧 Backend | http://localhost:3001 | Express API |
+| ⛓️ Linera | http://localhost:8081 | GraphQL service |
 
----
-
-## 🐛 Troubleshooting
-
-### Docker Issues
+### Docker Commands
 
 ```bash
+# Start in foreground
+docker-compose up
+
+# Start in background
+docker-compose up -d
+
 # View logs
-docker compose logs -f lineratrade
+docker-compose logs -f reax-app
 
-# Restart
-docker compose restart
+# Stop all services
+docker-compose down
 
-# Clean rebuild
-docker compose down -v
-docker compose build --no-cache
-docker compose up -d
+# Stop and remove data volumes
+docker-compose down -v
+
+# Rebuild after code changes
+docker-compose build --no-cache
+docker-compose up -d
 ```
 
-### Port Conflicts
+### Environment Variables
 
-```bash
-# Windows
-netstat -ano | findstr :3000
-taskkill /PID <PID> /F
+Create a `.env` file in the root directory for production:
 
-# Linux/macOS
-lsof -i :3000
-kill -9 <PID>
+```env
+# Solana Configuration
+SOLANA_RPC_URL=https://api.mainnet-beta.solana.com
 
-# Or use npx
-npx kill-port 3000 3001 8080 8081
+# Jupiter API (optional, for higher rate limits)
+JUPITER_API_KEY=your-api-key
+
+# Wallet for automated trading (KEEP SECRET!)
+WALLET_PRIVATE_KEY=your-base58-private-key
 ```
-
-### Linera Issues
-
-```bash
-# Kill Linera processes
-pkill -f linera
-
-# Clean temporary files
-rm -rf /tmp/linera-*
-
-# Restart platform
-./run.bash
-```
-
-### Common Issues
-
-See **[PLATFORM_SETUP.md](PLATFORM_SETUP.md)** → Troubleshooting section for detailed solutions.
 
 ---
 
-## 📈 Performance
+## 🛠️ Development Setup
 
-### Startup Time
-- **Docker (first run)**: ~5 minutes
-- **Docker (subsequent)**: ~80 seconds
-- **PowerShell**: ~60 seconds
-- **Bash**: ~60 seconds
+### Prerequisites
 
-### Resource Usage
-- **RAM**: ~2GB (all services)
-- **CPU**: ~10% (idle)
-- **Disk**: ~500MB (dependencies)
+- **Node.js 18+** and npm
+- **Rust** with `wasm32-unknown-unknown` target
+- **Linera CLI** (v0.15.7+)
 
-### Response Time
-- **Frontend**: <100ms
-- **Backend API**: <50ms
-- **Linera GraphQL**: <200ms
+### 1. Install Dependencies
 
----
+```bash
+# Root dependencies
+npm install
 
-## 🔐 Security
+# Backend
+cd backend && npm install
 
-- No authentication required (wallet-based identity)
-- Client-side wallet management
-- Secure API communication
-- Environment variable protection
-- Input validation and sanitization
-- Rate limiting ready
+# Frontend
+cd ../frontend && npm install
+```
+
+### 2. Configure Environment
+
+```bash
+# Backend configuration
+cp backend/.env.example backend/.env
+
+# Frontend configuration
+cp frontend/.env.example frontend/.env.local
+```
+
+Edit the `.env` files with your configuration.
+
+### 3. Initialize Linera (Optional)
+
+```bash
+# Initialize wallet with testnet faucet
+linera wallet init --faucet https://faucet.testnet-conway.linera.net/
+
+# Request a chain
+linera wallet request-chain --faucet https://faucet.testnet-conway.linera.net/
+
+# Build and deploy the contract
+cd linera-app
+cargo build --release --target wasm32-unknown-unknown
+linera project publish-and-create . reax-microchain
+```
+
+### 4. Start Development Servers
+
+```bash
+# Terminal 1: Backend
+cd backend && npm run dev
+
+# Terminal 2: Frontend
+cd frontend && npm run dev
+```
+
+Open http://localhost:3000
 
 ---
 
 ## 📁 Project Structure
 
 ```
-lineratrade/
-├── frontend/              # Next.js application
+reax/
+├── frontend/                    # Next.js 14 Application
 │   ├── src/
-│   │   ├── app/          # App router pages (6 pages)
-│   │   ├── components/   # React components (28+ components)
-│   │   └── lib/          # Utilities and clients
+│   │   ├── app/                # App Router pages
+│   │   │   ├── page.tsx        # Home/Dashboard
+│   │   │   ├── trading/        # DEX trading interface
+│   │   │   ├── strategies/     # Strategy builder
+│   │   │   ├── social/         # Swipe discovery
+│   │   │   ├── microchains/    # Profile management
+│   │   │   └── analytics/      # Leaderboards
+│   │   ├── components/
+│   │   │   ├── ui/             # Glass cards, buttons, inputs
+│   │   │   ├── Navigation.tsx  # App navigation
+│   │   │   └── LineraProvider  # Blockchain context
+│   │   └── lib/
+│   │       └── microchain-service.ts  # Linera API client
 │   └── package.json
-├── backend/              # Express.js API
+│
+├── backend/                     # Express.js API Server
 │   ├── src/
-│   │   ├── routes/       # API endpoints (4 groups)
-│   │   ├── services/     # Business logic (7 services)
-│   │   ├── models/       # Data models
-│   │   ├── database/     # Database layer
-│   │   ├── pinescript/   # PineScript interpreter
-│   │   └── strategy-builder/ # Visual builder
+│   │   ├── index.ts            # Server entry point
+│   │   ├── routes/             # API endpoints
+│   │   │   ├── jupiter.ts      # Jupiter DEX routes
+│   │   │   ├── raydium.ts      # Raydium DEX routes
+│   │   │   └── linera.ts       # Linera proxy routes
+│   │   └── services/
+│   │       ├── jupiter-service.ts   # Jupiter swap logic
+│   │       └── raydium-service.ts   # Raydium swap logic
 │   └── package.json
-├── linera-app/           # Linera application
-│   ├── abi/              # Application Binary Interface
-│   ├── trade-ai/         # Main application
-│   │   ├── src/
-│   │   │   ├── contract.rs  # Smart contract
-│   │   │   ├── service.rs   # GraphQL service
-│   │   │   └── state.rs     # State management
-│   │   └── Cargo.toml
-│   └── Cargo.toml
-├── Dockerfile            # Docker configuration
-├── compose.yaml          # Docker Compose config
-├── run.bash              # Linux/macOS startup
-├── start-platform.ps1    # Windows startup
-└── *.md                  # Documentation (24+ files)
+│
+├── linera-app/                  # Linera WASM Microchain App
+│   ├── abi/
+│   │   └── src/lib.rs          # ABI definitions (Operations, Events, Queries)
+│   ├── trade-ai/
+│   │   └── src/
+│   │       ├── contract.rs     # Main contract logic
+│   │       ├── service.rs      # Query service
+│   │       └── state.rs        # On-chain state
+│   ├── Cargo.toml
+│   └── rust-toolchain.toml
+│
+├── docker-compose.yml           # Container orchestration
+├── Dockerfile                   # Multi-stage build
+├── docker-entrypoint-testnet.sh # Startup script
+└── README.md                    # This file
 ```
 
 ---
 
-## ✅ Completion Status
+## 🔌 API Endpoints
 
-### Overall Progress: 100%
+### Backend REST API (Port 3001)
 
-All features implemented, tested, and documented!
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/health` | Health check |
+| GET | `/api/jupiter/quote` | Get Jupiter swap quote |
+| POST | `/api/jupiter/swap` | Execute Jupiter swap |
+| GET | `/api/raydium/pools` | List Raydium pools |
+| POST | `/api/raydium/swap` | Execute Raydium swap |
+| GET | `/api/linera/status` | Linera connection status |
 
-- [x] Linera microchains integration (SDK 0.15.7 - Testnet Conway)
-- [x] Multi-DEX trading (Raydium, Jupiter, Binance) with intelligent routing
-- [x] PineScript interpreter (v5 compatible) with backtesting engine
-- [x] Visual strategy builder (React Flow drag-and-drop)
-- [x] Social trading with automatic trade replication
-- [x] Backend services (API, WebSocket, database, notifications)
-- [x] Frontend application (6 pages, 28+ components)
-- [x] Professional UI with glass morphism design
-- [x] Multi-channel notification system
-- [x] Docker Compose setup
-- [x] Complete documentation (24+ guides)
-- [x] Testing and verification
+### Linera GraphQL (Port 8081)
+
+The Linera service exposes a GraphQL endpoint for querying microchain state:
+
+```graphql
+query {
+  strategies(owner: "0x...", limit: 10) {
+    id
+    name
+    active
+    version
+  }
+  
+  orders(strategyId: 1, status: "Filled") {
+    id
+    token
+    quantity
+    fillPrice
+    txHash
+  }
+}
+```
 
 ---
 
-## 🎯 Quick Decision Tree
+## 🛡️ Safety Features
 
-**Want to start now?**
-→ Run: `docker compose up -d --build`
+ReaX includes built-in safety controls:
 
+- **Position Limits**: Max size per token and total exposure
+- **Slippage Protection**: Configurable max slippage (basis points)
+- **Stop-Loss Requirements**: Optionally require stop-loss on all orders
+- **Fail-Safe Mode**: Auto-halt execution if max loss exceeded
+- **Order Validation**: Every order validated against safety config
+- **Minimum Balance**: Ensure sufficient gas before execution
 
+---
 
-## 🎊 You're Ready!
+## 🔗 External Integrations
 
-Everything is in place. The platform is production ready.
+### Jupiter DEX
+- Aggregated liquidity across Solana DEXs
+- Best price routing
+- Docs: https://station.jup.ag/docs
 
-**Start now:**
+### Raydium DEX
+- Concentrated liquidity AMM
+- Direct pool swaps
+- Docs: https://raydium.gitbook.io
+
+### Linera
+- Microchain infrastructure
+- Conway Testnet
+- Docs: https://linera.dev
+
+---
+
+## 🧪 Testing
+
 ```bash
-docker compose up -d --build
+# Backend tests
+cd backend && npm test
+
+# Frontend lint
+cd frontend && npm run lint
+
+# Linera contract tests
+cd linera-app && cargo test
 ```
 
-**Then visit:** http://localhost:3000
+---
 
-**Enjoy your trading platform! 🚀**
+## 📜 License
+
+MIT License - See [LICENSE](LICENSE) for details.
 
 ---
 
+## 🤝 Contributing
 
-### Quick Commands
-
-```bash
-# Start
-docker compose up -d --build
-
-# Stop
-docker compose down
-
-# Restart
-docker compose restart
-
-# Logs
-docker compose logs -f lineratrade
-
-# Status
-docker compose ps
-
-# Health check
-curl http://localhost:3001/health
-```
-
-
-### Troubleshooting
-
-1. Check logs: `docker compose logs -f`
-2. Verify health: `curl http://localhost:3001/health`
-3. Review PLATFORM_SETUP.md troubleshooting section
-4. Check ports are free: 3000, 3001, 8080, 8081
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing`)
+3. Commit changes (`git commit -m 'Add amazing feature'`)
+4. Push to branch (`git push origin feature/amazing`)
+5. Open a Pull Request
 
 ---
 
-## 🏆 Project Highlights
-
-1. **Complete Linera Integration**: Full microchain support with SDK 0.15.7 (Testnet Conway)
-2. **Multi-DEX Trading**: Raydium, Jupiter, and Binance integration with intelligent routing
-3. **Dual Strategy Builders**: PineScript interpreter + visual block builder (React Flow)
-4. **Real-Time Social Trading**: Follow strategies with automatic trade replication
-5. **Professional UI**: Modern glass morphism design with dark theme and animations
-6. **Advanced Analytics**: Live price feeds, performance metrics, and event streaming
-7. **Multi-Channel Notifications**: In-app, email, and webhook support
-8. **One-Command Deployment**: Docker Compose for instant setup
-9. **Comprehensive Documentation**: 24+ guides covering all aspects
-10. **Cross-Platform**: Windows, Linux, macOS support
-
----
-
-## 🎯 What's Next?
-
-1. **Start the platform** (choose method above)
-2. **Open http://localhost:3000**
-3. **Explore all 6 pages**
-4. **Create a strategy**
-5. **Deploy to microchain**
-6. **Try social trading**
-7. **Monitor analytics**
-
----
-
-**Status**: ✅ PRODUCTION READY  
-**Version**: 2.2.0  
-**Linera SDK**: 0.15.7 (Testnet Conway)  
-**Last Updated**: January 11, 2026  
-**Completion**: 100%
-
-**🎉 Ready to revolutionize decentralized trading! 🚀**
+<p align="center">
+  Built with ⛓️ Linera Microchains & 💜 by the ReaX Team
+</p>

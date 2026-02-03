@@ -43,9 +43,31 @@ app.use('/api/pinescript', pineScriptRoutes);
 app.use('/api/visual-strategy', visualStrategyRoutes);
 app.use('/api/strategy-microchain', strategyMicrochainRoutes);
 
+// Test route to verify routing works
+app.get('/test', (req, res) => {
+  res.json({ message: 'Test route works!' });
+});
+
 // Health check
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
+// Debug: List all routes
+app.get('/debug/routes', (req, res) => {
+  const routes: string[] = [];
+  app._router.stack.forEach((middleware: any) => {
+    if (middleware.route) {
+      routes.push(`${Object.keys(middleware.route.methods).join(',')} ${middleware.route.path}`);
+    } else if (middleware.name === 'router') {
+      middleware.handle.stack.forEach((handler: any) => {
+        if (handler.route) {
+          routes.push(`${Object.keys(handler.route.methods).join(',')} ${middleware.regexp} ${handler.route.path}`);
+        }
+      });
+    }
+  });
+  res.json({ routes });
 });
 
 // Initialize WebSocket server

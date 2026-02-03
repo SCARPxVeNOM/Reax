@@ -19,12 +19,21 @@ export function LineraProvider({ children }: { children: ReactNode }) {
 
     async function connect() {
       try {
-        await client.connect();
+        console.log('Attempting to connect to Linera...');
+        // Set a timeout for connection to avoid hanging indefinitely
+        const timeoutPromise = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('Connection timeout')), 2000)
+        );
+
+        await Promise.race([client.connect(), timeoutPromise]);
+
         if (mounted) {
+          console.log('Connected to Linera successfully');
           setIsConnected(true);
         }
       } catch (error) {
-        console.error('Failed to connect to Linera:', error);
+        console.warn('Failed to connect to Linera (Backend might be offline). Running in Demo Mode.', error);
+        // Do not re-throw, allow app to run in disconnected mode
       }
     }
 
@@ -32,7 +41,7 @@ export function LineraProvider({ children }: { children: ReactNode }) {
 
     return () => {
       mounted = false;
-      client.disconnect();
+      client.disconnect().catch(console.error);
     };
   }, []);
 

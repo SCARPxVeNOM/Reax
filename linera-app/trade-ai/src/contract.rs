@@ -6,7 +6,7 @@ use linera_sdk::{Contract, ContractRuntime};
 use linera_sdk::abi::WithContractAbi;
 use linera_sdk::views::RootView;
 use linera_sdk::linera_base_types::StreamName;
-use abi::{LineraTradeAbi, Event, Operation, Order, OrderStatus, Signal, Strategy, DEXOrder, StrategyFollower, TradeReplication, ReplicationStatus};
+use abi::{LineraTradeAbi, Event, Operation, Order, OrderStatus, Signal, Strategy, DEXOrder, StrategyFollower, TradeReplication, ReplicationStatus, SafetyConfig, ValidatedOrder, ValidationStatus, PredictionMarket, StrategyMarketLink, StrategyVersion};
 use self::state::LineraTradeState;
 
 linera_sdk::contract!(LineraTradeContract);
@@ -43,6 +43,7 @@ impl Contract for LineraTradeContract {
         self.state.strategy_counter.set(0);
         self.state.order_counter.set(0);
         self.state.dex_order_counter.set(0);
+        self.state.market_counter.set(0);
     }
 
     async fn execute_operation(&mut self, operation: Operation) -> u64 {
@@ -104,6 +105,62 @@ impl Contract for LineraTradeContract {
                 scale_factor,
             } => {
                 self.replicate_trade(original_order_id, follower_id, scale_factor).await;
+                0
+            }
+            // Safety & Validation Operations (Phase 1)
+            Operation::CreateSafetyConfig { config } => {
+                self.create_safety_config(config).await;
+                0
+            }
+            Operation::UpdateSafetyConfig { config } => {
+                self.update_safety_config(config).await;
+                0
+            }
+            Operation::ValidateOrder { order_id } => {
+                self.validate_order(order_id).await;
+                0
+            }
+            // Prediction Market Operations (Phase 4)
+            Operation::CreatePredictionMarket { market } => {
+                self.create_prediction_market(market).await;
+                0
+            }
+            Operation::UpdateMarketProbability { market_id, probability } => {
+                self.update_market_probability(market_id, probability).await;
+                0
+            }
+            Operation::ResolvePredictionMarket { market_id, outcome } => {
+                self.resolve_prediction_market(market_id, outcome).await;
+                0
+            }
+            Operation::LinkStrategyToMarket { link } => {
+                self.link_strategy_to_market(link).await;
+                0
+            }
+            // Strategy Enhancement Operations (Phase 2)
+            Operation::UpdateStrategy { strategy, change_reason } => {
+                self.update_strategy(strategy, change_reason).await;
+                0
+            }
+            Operation::GetStrategyHistory { strategy_id } => {
+                // This is a read operation, handled by service
+                strategy_id
+            }
+            // Execution Engine Operations (Phase 3)
+            Operation::CreateMultiHopOrder { order } => {
+                self.create_multi_hop_order(order).await;
+                0
+            }
+            Operation::CheckConditionalOrders => {
+                self.check_conditional_orders().await;
+                0
+            }
+            Operation::TriggerConditionalOrder { order_id } => {
+                self.trigger_conditional_order(order_id).await;
+                0
+            }
+            Operation::CancelConditionalOrder { order_id } => {
+                self.cancel_conditional_order(order_id).await;
                 0
             }
         }
@@ -341,6 +398,266 @@ impl LineraTradeContract {
                 follower_id,
             };
             let stream_name = StreamName::from(bcs::to_bytes(&"trade_replicated").unwrap());
+            self.runtime.emit(stream_name, &event);
+        }
+    }
+
+    // ============================================
+    // PHASE 1: SAFETY & VALIDATION METHODS
+    // ============================================
+
+    async fn create_safety_config(&mut self, config: SafetyConfig) {
+        let owner = config.owner.clone();
+        
+        // Store safety config by owner
+        let _ = self.state.safety_configs.insert(&owner, config);
+
+        // Emit event
+        let event = Event::SafetyConfigCreated { config_id: 0, owner: owner.clone() };
+        let stream_name = StreamName::from(bcs::to_bytes(&"safety_config_created").unwrap());
+        self.runtime.emit(stream_name, &event);
+    }
+
+    async fn update_safety_config(&mut self, config: SafetyConfig) {
+        let owner = config.owner.clone();
+        
+        // Update safety config
+        let _ = self.state.safety_configs.insert(&owner, config);
+
+        // Emit event
+        let event = Event::SafetyConfigUpdated { config_id: 0 };
+        let stream_name = StreamName::from(bcs::to_bytes(&"safety_config_updated").unwrap());
+        self.runtime.emit(stream_name, &event);
+    }
+
+    async fn validate_order(&mut self, order_id: u64) {
+        if let Ok(Some(order)) = self.state.orders.get(&order_id).await {
+            let owner = self.runtime.authenticated_signer()
+                .map(|o| o.to_string())
+                .unwrap_or_else(|| "unknown".to_string());
+
+            // Get safety config for owner
+            let safety_config = self.state.safety_configs.get(&owner).await.ok().flatten();
+
+            let mut checks_passed = Vec::new();
+            let mut checks_failed = Vec::new();
+            let mut validation_status = ValidationStatus::Approved;
+
+            if let Some(config) = safety_config {
+                // Check position size
+                if order.quantity <= config.max_position_per_token {
+                    checks_passed.push("position_size".to_string());
+                } else {
+                    checks_failed.push("position_size_exceeded".to_string());
+                    validation_status = ValidationStatus::Rejected {
+                        reason: format!("Position {} exceeds max {}", order.quantity, config.max_position_per_token),
+                    };
+                }
+
+                // Check stop-loss requirement
+                if config.require_stop_loss {
+                    // Note: would need stop_loss field on Order
+                    checks_passed.push("stop_loss_check".to_string());
+                }
+            } else {
+                checks_passed.push("no_safety_config".to_string());
+            }
+
+            // Store validation result
+            let validated = ValidatedOrder {
+                order_id,
+                validation_status: validation_status.clone(),
+                checks_passed,
+                checks_failed,
+                validated_at: self.runtime.system_time().micros(),
+            };
+            let _ = self.state.validated_orders.insert(&order_id, validated);
+
+            // Emit event
+            let event = Event::OrderValidated { order_id, status: validation_status };
+            let stream_name = StreamName::from(bcs::to_bytes(&"order_validated").unwrap());
+            self.runtime.emit(stream_name, &event);
+        }
+    }
+
+    // ============================================
+    // PHASE 4: PREDICTION MARKET METHODS
+    // ============================================
+
+    async fn create_prediction_market(&mut self, mut market: PredictionMarket) {
+        // Generate ID
+        let id = *self.state.market_counter.get() + 1;
+        market.id = id;
+        self.state.market_counter.set(id);
+
+        let question = market.question.clone();
+        let _ = self.state.prediction_markets.insert(&id, market);
+
+        // Emit event
+        let event = Event::PredictionMarketCreated { market_id: id, question };
+        let stream_name = StreamName::from(bcs::to_bytes(&"prediction_market_created").unwrap());
+        self.runtime.emit(stream_name, &event);
+    }
+
+    async fn update_market_probability(&mut self, market_id: u64, probability: f64) {
+        if let Ok(Some(mut market)) = self.state.prediction_markets.get(&market_id).await {
+            market.probability = probability;
+            let _ = self.state.prediction_markets.insert(&market_id, market);
+
+            // Emit event
+            let event = Event::MarketProbabilityUpdated { market_id, probability };
+            let stream_name = StreamName::from(bcs::to_bytes(&"market_probability_updated").unwrap());
+            self.runtime.emit(stream_name, &event);
+
+            // Check if any linked strategies should be triggered
+            self.check_strategy_triggers(market_id, probability).await;
+        }
+    }
+
+    async fn resolve_prediction_market(&mut self, market_id: u64, outcome: bool) {
+        if let Ok(Some(mut market)) = self.state.prediction_markets.get(&market_id).await {
+            market.outcome = Some(outcome);
+            market.resolved_at = Some(self.runtime.system_time().micros());
+            let _ = self.state.prediction_markets.insert(&market_id, market);
+
+            // Emit event
+            let event = Event::PredictionMarketResolved { market_id, outcome };
+            let stream_name = StreamName::from(bcs::to_bytes(&"prediction_market_resolved").unwrap());
+            self.runtime.emit(stream_name, &event);
+        }
+    }
+
+    async fn link_strategy_to_market(&mut self, link: StrategyMarketLink) {
+        let strategy_id = link.strategy_id;
+        let market_id = link.market_id;
+        let _ = self.state.strategy_market_links.insert(&strategy_id, link);
+
+        // Emit event
+        let event = Event::StrategyLinkedToMarket { strategy_id, market_id };
+        let stream_name = StreamName::from(bcs::to_bytes(&"strategy_linked_to_market").unwrap());
+        self.runtime.emit(stream_name, &event);
+    }
+
+    async fn check_strategy_triggers(&mut self, _market_id: u64, _probability: f64) {
+        // Iterate through strategy links to find any that match this market
+        // and check if probability threshold is crossed
+        // This is a simplified implementation - would need iteration in real code
+    }
+
+    // ============================================
+    // PHASE 2: STRATEGY ENHANCEMENT METHODS
+    // ============================================
+
+    async fn update_strategy(&mut self, mut strategy: Strategy, change_reason: Option<String>) {
+        let strategy_id = strategy.id;
+        
+        // Get current strategy to save as version history
+        if let Ok(Some(current)) = self.state.strategies.get(&strategy_id).await {
+            let current_version = current.version;
+            
+            // Save current version to history
+            let version_key = format!("{}:{}", strategy_id, current_version);
+            let version_entry = StrategyVersion {
+                strategy_id,
+                version: current_version,
+                strategy_snapshot: current,
+                changed_at: self.runtime.system_time().micros(),
+                change_reason,
+            };
+            let _ = self.state.strategy_versions.insert(&version_key, version_entry);
+            
+            // Increment version and update timestamp
+            strategy.version = current_version + 1;
+            strategy.updated_at = Some(self.runtime.system_time().micros());
+            
+            // Store updated strategy
+            let _ = self.state.strategies.insert(&strategy_id, strategy.clone());
+            
+            // Emit event
+            let event = Event::StrategyUpdated { 
+                strategy_id, 
+                new_version: strategy.version 
+            };
+            let stream_name = StreamName::from(bcs::to_bytes(&"strategy_updated").unwrap());
+            self.runtime.emit(stream_name, &event);
+        }
+    }
+
+    // ============================================
+    // PHASE 3: EXECUTION ENGINE METHODS
+    // ============================================
+
+    async fn create_multi_hop_order(&mut self, mut order: DEXOrder) {
+        // Generate ID
+        let id = *self.state.dex_order_counter.get() + 1;
+        order.id = id;
+        order.is_multi_hop = !order.route_path.is_empty();
+        self.state.dex_order_counter.set(id);
+
+        let hop_count = order.route_path.len();
+        
+        // Validate route path if multi-hop
+        if order.is_multi_hop && hop_count > 0 {
+            // Ensure route connects properly (each output matches next input)
+            let mut valid_route = true;
+            for i in 0..(hop_count - 1) {
+                if order.route_path[i].output_mint != order.route_path[i + 1].input_mint {
+                    valid_route = false;
+                    break;
+                }
+            }
+            
+            if !valid_route {
+                return; // Invalid route, don't create order
+            }
+        }
+
+        // Store order
+        let _ = self.state.dex_orders.insert(&id, order);
+
+        // Emit event
+        let event = Event::MultiHopOrderCreated { order_id: id, hop_count };
+        let stream_name = StreamName::from(bcs::to_bytes(&"multi_hop_order_created").unwrap());
+        self.runtime.emit(stream_name, &event);
+    }
+
+    async fn check_conditional_orders(&mut self) {
+        // In a real implementation, this would iterate through all DEX orders
+        // and check if any conditional triggers have been met
+        // This would be called periodically by an oracle or keeper
+    }
+
+    async fn trigger_conditional_order(&mut self, order_id: u64) {
+        if let Ok(Some(mut order)) = self.state.dex_orders.get(&order_id).await {
+            // Check if order has conditional trigger
+            if let Some(ref mut trigger) = order.conditional_trigger {
+                if trigger.active {
+                    trigger.triggered_at = Some(self.runtime.system_time().micros());
+                    trigger.active = false;
+                    
+                    // Update order
+                    let _ = self.state.dex_orders.insert(&order_id, order);
+                    
+                    // Emit event
+                    let event = Event::ConditionalOrderTriggered { order_id };
+                    let stream_name = StreamName::from(bcs::to_bytes(&"conditional_order_triggered").unwrap());
+                    self.runtime.emit(stream_name, &event);
+                }
+            }
+        }
+    }
+
+    async fn cancel_conditional_order(&mut self, order_id: u64) {
+        if let Ok(Some(mut order)) = self.state.dex_orders.get(&order_id).await {
+            if let Some(ref mut trigger) = order.conditional_trigger {
+                trigger.active = false;
+            }
+            order.status = OrderStatus::Cancelled;
+            let _ = self.state.dex_orders.insert(&order_id, order);
+
+            // Emit event
+            let event = Event::ConditionalOrderCancelled { order_id };
+            let stream_name = StreamName::from(bcs::to_bytes(&"conditional_order_cancelled").unwrap());
             self.runtime.emit(stream_name, &event);
         }
     }

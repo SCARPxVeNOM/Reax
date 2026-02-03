@@ -1,395 +1,151 @@
 /**
- * Strategy API Routes
+ * Strategies Routes - Using Linera Blockchain Storage
  */
 
 import { Router } from 'express';
-import { strategyRepository } from '../database/repositories/strategy-repository';
-import { pineScriptService } from '../services/pinescript-service';
+import { getLineraStorageService } from '../services/linera-storage';
 
 const router = Router();
+const storage = getLineraStorageService();
 
-// Create strategy
-router.post('/', async (req, res) => {
+// GET /api/strategies - Get all public strategies
+router.get('/', async (req, res) => {
   try {
-    const { userId, name, type, code, visualData } = req.body;
-
-    const strategy = await strategyRepository.create({
-      userId,
-      name,
-      type,
-      code,
-      visualData,
-      status: 'DRAFT',
-      initialCapital: 10000,
+    const strategies = await storage.getPublicStrategies();
+    res.json({
+      success: true,
+      strategies,
+      source: storage.isConnected() ? 'linera' : 'memory',
     });
-
-    res.json(strategy);
   } catch (error: any) {
+    console.error('Error fetching strategies:', error);
     res.status(500).json({ error: error.message });
   }
 });
 
-// Get user strategies
-router.get('/user/:userId', async (req, res) => {
-  try {
-    const { userId } = req.params;
-    const strategies = await strategyRepository.findByUserId(userId);
-    res.json(strategies);
-  } catch (error: any) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// Get strategy by ID
+// GET /api/strategies/:id - Get a specific strategy
 router.get('/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const strategy = await strategyRepository.findById(id);
-    
+    const strategy = await storage.getStrategy(id);
+
     if (!strategy) {
       return res.status(404).json({ error: 'Strategy not found' });
     }
 
-    res.json(strategy);
-  } catch (error: any) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// Update strategy
-router.put('/:id', async (req, res) => {
-  try {
-    const { id } = req.params;
-    const updates = req.body;
-
-    const strategy = await strategyRepository.update(id, updates);
-    
-    if (!strategy) {
-      return res.status(404).json({ error: 'Strategy not found' });
-    }
-
-    res.json(strategy);
-  } catch (error: any) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// Delete strategy
-router.delete('/:id', async (req, res) => {
-  try {
-    const { id } = req.params;
-    const deleted = await strategyRepository.delete(id);
-    
-    if (!deleted) {
-      return res.status(404).json({ error: 'Strategy not found' });
-    }
-
-    res.json({ success: true });
-  } catch (error: any) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// Deploy strategy to Linera microchain
-router.post('/:id/deploy', async (req, res) => {
-  try {
-    const { id } = req.params;
-    const strategy = await strategyRepository.findById(id);
-    
-    if (!strategy) {
-      return res.status(404).json({ error: 'Strategy not found' });
-    }
-
-    // Deploy to Linera microchain via GraphQL
-    const lineraResponse = await fetch(process.env.LINERA_SERVICE_URL || 'http://localhost:8080', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        query: `
-          mutation CreateStrategy($strategy: StrategyInput!) {
-            executeOperation(
-              applicationId: "${process.env.LINERA_APP_ID}",
-              operation: {
-                CreateStrategy: {
-                  strategy: $strategy
-                }
-              }
-            )
-          }
-        `,
-        variables: {
-          strategy: {
-            id: parseInt(id),
-            owner: strategy.userId,
-            name: strategy.name,
-            strategy_type: strategy.type === 'PINESCRIPT' ? { DSL: strategy.code } : { Form: strategy.visualData },
-            active: true,
-            created_at: Date.now() * 1000, // Convert to microseconds
-          }
-        }
-      })
-    });
-
-    if (!lineraResponse.ok) {
-      throw new Error('Failed to deploy to Linera microchain');
-    }
-
-    // Update strategy status
-    const updatedStrategy = await strategyRepository.update(id, {
-      status: 'ACTIVE',
-      deployedAt: new Date(),
-    });
-
-    // Emit WebSocket event for real-time updates
-    const io = req.app.get('io');
-    if (io) {
-      io.emit('strategy:deployed', {
-        strategyId: id,
-        strategy: updatedStrategy,
-        timestamp: Date.now(),
-      });
-    }
-
-    res.json({ 
-      success: true, 
-      message: 'Strategy deployed to Linera microchain',
-      strategy: updatedStrategy 
+    res.json({
+      success: true,
+      strategy,
     });
   } catch (error: any) {
+    console.error('Error fetching strategy:', error);
     res.status(500).json({ error: error.message });
   }
 });
 
-// Backtest strategy
-router.post('/:id/backtest', async (req, res) => {
+// POST /api/strategies - Create/publish a new strategy
+router.post('/', async (req, res) => {
   try {
-    const { id } = req.params;
-    const { startDate, endDate, initialCapital } = req.body;
+    const {
+      name,
+      owner,
+      ownerName,
+      creationMethod,
+      code,
+      rules,
+      tags,
+      riskLevel,
+      visibility,
+      description,
+    } = req.body;
 
-    const strategy = await strategyRepository.findById(id);
-    
-    if (!strategy) {
-      return res.status(404).json({ error: 'Strategy not found' });
+    if (!name || !owner) {
+      return res.status(400).json({ error: 'name and owner are required' });
     }
 
-    if (strategy.type !== 'PINESCRIPT' || !strategy.code) {
-      return res.status(400).json({ error: 'Only PineScript strategies can be backtested' });
-    }
+    const strategy = await storage.publishStrategy({
+      name,
+      owner,
+      ownerName: ownerName || owner.substring(0, 8) + '...',
+      creationMethod: creationMethod || 'visual',
+      code,
+      rules,
+      tags: tags || [],
+      riskLevel: riskLevel || 'medium',
+      visibility: visibility || 'public',
+      description,
+    });
 
-    const compiled = pineScriptService.parseAndCompile(strategy.code);
-    
-    // TODO: Fetch historical data for the date range
-    const mockContext = {
-      open: [],
-      high: [],
-      low: [],
-      close: [],
-      volume: [],
-      timestamp: [],
-    };
-
-    const results = pineScriptService.backtest(compiled, mockContext, initialCapital || 10000);
-
-    res.json(results);
+    res.json({
+      success: true,
+      strategy,
+      message: storage.isConnected()
+        ? 'Strategy published to Linera blockchain'
+        : 'Strategy stored locally (Linera offline)',
+    });
   } catch (error: any) {
+    console.error('Error creating strategy:', error);
     res.status(500).json({ error: error.message });
   }
 });
 
-// Get all active strategies for social trading
-router.get('/marketplace/active', async (req, res) => {
-  try {
-    let lineraStrategies: any[] = [];
-
-    // Try to query Linera microchain for active strategies, but don't fail
-    // the whole endpoint if Linera is unavailable.
-    try {
-      const lineraResponse = await fetch(
-        process.env.LINERA_SERVICE_URL || 'http://localhost:8081',
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            query: `
-              query GetActiveStrategies {
-                queryApplication(
-                  applicationId: "${process.env.LINERA_APP_ID}",
-                  query: {
-                    GetStrategies: {
-                      owner: null,
-                      limit: 100,
-                      offset: 0
-                    }
-                  }
-                )
-              }
-            `
-          })
-        }
-      );
-
-      if (lineraResponse.ok) {
-        const data = await lineraResponse.json();
-        const result = JSON.parse(data.data.queryApplication);
-        lineraStrategies = result.Strategies || [];
-      }
-    } catch (lineraError: any) {
-      console.warn('Linera unavailable for marketplace strategies, falling back to DB only:', lineraError.message);
-    }
-
-    // Also get from local database for additional metadata
-    const dbStrategies = await strategyRepository.findAll();
-
-    let enrichedStrategies: any[];
-
-    if (lineraStrategies.length > 0) {
-      // Merge and enrich when we have on-chain data
-      enrichedStrategies = lineraStrategies.map((lineraStrat: any) => {
-        const dbStrat = dbStrategies.find((s: any) => s.id === lineraStrat.id.toString());
-        return {
-          ...lineraStrat,
-          ...dbStrat,
-          performance: {
-            totalReturn: Math.random() * 100 - 20,
-            winRate: Math.random() * 100,
-            sharpeRatio: Math.random() * 3,
-            maxDrawdown: Math.random() * 30,
-            totalTrades: Math.floor(Math.random() * 500),
-            followers: Math.floor(Math.random() * 100),
-          }
-        };
-      });
-    } else {
-      // Fallback: use DB strategies only so Social page still has content
-      enrichedStrategies = dbStrategies.map((s: any) => ({
-        ...s,
-        performance: {
-          totalReturn: Math.random() * 100 - 20,
-          winRate: Math.random() * 100,
-          sharpeRatio: Math.random() * 3,
-          maxDrawdown: Math.random() * 30,
-          totalTrades: Math.floor(Math.random() * 500),
-          followers: Math.floor(Math.random() * 100),
-        }
-      }));
-    }
-
-    res.json(enrichedStrategies);
-  } catch (error: any) {
-    console.error('Error fetching marketplace strategies:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// Follow a strategy
+// POST /api/strategies/:id/follow - Follow a strategy
 router.post('/:id/follow', async (req, res) => {
   try {
     const { id } = req.params;
-    const { userId, allocationAmount, riskLimitPercent } = req.body;
+    const { followerId } = req.body;
 
-    // Create follower record on Linera microchain
-    const lineraResponse = await fetch(process.env.LINERA_SERVICE_URL || 'http://localhost:8080', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        query: `
-          mutation FollowStrategy($strategyId: Int!, $allocation: Float!, $maxPosition: Float!, $autoFollow: Boolean!) {
-            executeOperation(
-              applicationId: "${process.env.LINERA_APP_ID}",
-              operation: {
-                FollowStrategy: {
-                  strategy_id: $strategyId,
-                  allocation_percentage: $allocation,
-                  max_position_size: $maxPosition,
-                  auto_follow: $autoFollow
-                }
-              }
-            )
-          }
-        `,
-        variables: {
-          strategyId: parseInt(id),
-          allocation: riskLimitPercent || 10.0,
-          maxPosition: allocationAmount,
-          autoFollow: true,
-        }
-      })
-    });
-
-    if (!lineraResponse.ok) {
-      throw new Error('Failed to follow strategy on Linera microchain');
+    if (!followerId) {
+      return res.status(400).json({ error: 'followerId is required' });
     }
 
-    // Emit WebSocket event for real-time updates
-    const io = req.app.get('io');
-    if (io) {
-      io.emit('strategy:followed', {
-        strategyId: id,
-        userId,
-        allocationAmount,
-        riskLimitPercent,
-        timestamp: Date.now(),
-      });
-    }
+    await storage.followStrategy(followerId, id);
 
-    res.json({ 
-      success: true, 
-      message: 'Successfully following strategy',
-      followerId: userId,
+    res.json({
+      success: true,
+      message: 'Now following strategy',
     });
   } catch (error: any) {
+    console.error('Error following strategy:', error);
     res.status(500).json({ error: error.message });
   }
 });
 
-// Unfollow a strategy
+// POST /api/strategies/:id/unfollow - Unfollow a strategy
 router.post('/:id/unfollow', async (req, res) => {
   try {
     const { id } = req.params;
-    const { userId } = req.body;
+    const { followerId } = req.body;
 
-    // Remove follower record from Linera microchain
-    const lineraResponse = await fetch(process.env.LINERA_SERVICE_URL || 'http://localhost:8080', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        query: `
-          mutation UnfollowStrategy($strategyId: Int!) {
-            executeOperation(
-              applicationId: "${process.env.LINERA_APP_ID}",
-              operation: {
-                UnfollowStrategy: {
-                  strategy_id: $strategyId
-                }
-              }
-            )
-          }
-        `,
-        variables: {
-          strategyId: parseInt(id),
-        }
-      })
-    });
-
-    if (!lineraResponse.ok) {
-      throw new Error('Failed to unfollow strategy on Linera microchain');
+    if (!followerId) {
+      return res.status(400).json({ error: 'followerId is required' });
     }
 
-    // Emit WebSocket event for real-time updates
-    const io = req.app.get('io');
-    if (io) {
-      io.emit('strategy:unfollowed', {
-        strategyId: id,
-        userId,
-        timestamp: Date.now(),
-      });
-    }
+    await storage.unfollowStrategy(followerId, id);
 
-    res.json({ 
-      success: true, 
-      message: 'Successfully unfollowed strategy',
+    res.json({
+      success: true,
+      message: 'Unfollowed strategy',
     });
   } catch (error: any) {
+    console.error('Error unfollowing strategy:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// GET /api/strategies/:id/followers - Get strategy followers
+router.get('/:id/followers', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const followers = await storage.getFollowers(id);
+
+    res.json({
+      success: true,
+      followers,
+      count: followers.length,
+    });
+  } catch (error: any) {
+    console.error('Error getting followers:', error);
     res.status(500).json({ error: error.message });
   }
 });

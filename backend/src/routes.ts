@@ -50,18 +50,18 @@ export function setupRoutes(app: Express, context: RouteContext) {
   app.post('/api/tweets/fetch-latest', async (req: Request, res: Response) => {
     try {
       const { username } = req.body;
-      
+
       // If no username provided, fetch from default user
-      const influencers = username 
-        ? [username] 
+      const influencers = username
+        ? [username]
         : (process.env.INFLUENCERS || 'Anubhav06_2004').split(',').map(u => u.trim());
 
       // Trigger ingestion service to fetch tweets
       // Note: In a production setup, you'd use a message queue or direct service call
       // For now, we'll return success and let the ingestion service handle it
       console.log(`📥 Manual tweet fetch requested for: ${influencers.join(', ')}`);
-      
-      res.json({ 
+
+      res.json({
         success: true,
         message: `Fetch request queued for @${influencers.join(', @')}`,
         note: 'Tweets will be processed by the ingestion service. Check logs for results.',
@@ -99,7 +99,7 @@ export function setupRoutes(app: Express, context: RouteContext) {
       if (autoOrderService && signal.sentiment === 'bullish') {
         signal.id = signalId;
         autoOrderResult = await autoOrderService.processBuySignal(signal, signalId);
-        
+
         if (autoOrderResult.orderCreated) {
           console.log(`✅ Auto-order created for signal ${signalId}: Order ID ${autoOrderResult.orderId}`);
           // Broadcast order creation
@@ -161,7 +161,7 @@ export function setupRoutes(app: Express, context: RouteContext) {
               platform: row.platform,
             }));
           }
-        } catch {}
+        } catch { }
       }
 
       // Cache if first page
@@ -228,7 +228,7 @@ export function setupRoutes(app: Express, context: RouteContext) {
           if (cached && cached.length > 0) {
             strategies = cached;
           }
-        } catch {}
+        } catch { }
       }
 
       // Cache if first page and owner specified
@@ -342,10 +342,10 @@ export function setupRoutes(app: Express, context: RouteContext) {
       // Get user risk profile from query params (optional)
       const userRiskProfile = req.query.max_trade_size
         ? {
-            maxTradeSize: parseFloat(req.query.max_trade_size as string),
-            maxSlippage: parseFloat(req.query.max_slippage as string) || 5.0,
-            preferredRoute: req.query.preferred_route as 'DEX' | 'CEX' | undefined,
-          }
+          maxTradeSize: parseFloat(req.query.max_trade_size as string),
+          maxSlippage: parseFloat(req.query.max_slippage as string) || 5.0,
+          preferredRoute: req.query.preferred_route as 'DEX' | 'CEX' | undefined,
+        }
         : undefined;
 
       // Generate suggestions
@@ -542,6 +542,214 @@ export function setupRoutes(app: Express, context: RouteContext) {
       res.json({ success: true, username, active });
     } catch (error: any) {
       console.error('Error toggling monitored user:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // ============================================
+  // PHASE 1: SAFETY & VALIDATION ROUTES
+  // ============================================
+
+  // Create safety config
+  app.post('/api/safety/config', async (req: Request, res: Response) => {
+    try {
+      const config = req.body;
+      await lineraClient.createSafetyConfig(config);
+      io.to('safety').emit('safety_config:created', config);
+      res.json({ success: true, config });
+    } catch (error: any) {
+      console.error('Error creating safety config:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Update safety config
+  app.put('/api/safety/config', async (req: Request, res: Response) => {
+    try {
+      const config = req.body;
+      await lineraClient.updateSafetyConfig(config);
+      io.to('safety').emit('safety_config:updated', config);
+      res.json({ success: true, config });
+    } catch (error: any) {
+      console.error('Error updating safety config:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Get safety config
+  app.get('/api/safety/config/:owner', async (req: Request, res: Response) => {
+    try {
+      const owner = req.params.owner;
+      const config = await lineraClient.getSafetyConfig(owner);
+      res.json(config || { message: 'No safety config found' });
+    } catch (error: any) {
+      console.error('Error fetching safety config:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Validate order
+  app.post('/api/orders/:id/validate', async (req: Request, res: Response) => {
+    try {
+      const orderId = parseInt(req.params.id);
+      const validation = await lineraClient.validateOrder(orderId);
+      io.to('orders').emit('order:validated', { orderId, validation });
+      res.json({ success: true, validation });
+    } catch (error: any) {
+      console.error('Error validating order:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // ============================================
+  // PHASE 2: STRATEGY ENHANCEMENT ROUTES
+  // ============================================
+
+  // Update strategy with versioning
+  app.put('/api/strategies/:id', async (req: Request, res: Response) => {
+    try {
+      const strategyId = parseInt(req.params.id);
+      const { strategy, change_reason } = req.body;
+      strategy.id = strategyId;
+      await lineraClient.updateStrategy(strategy, change_reason);
+      io.to('strategies').emit('strategy:updated', { strategyId, strategy });
+      res.json({ success: true, strategyId });
+    } catch (error: any) {
+      console.error('Error updating strategy:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Get strategy versions
+  app.get('/api/strategies/:id/versions', async (req: Request, res: Response) => {
+    try {
+      const strategyId = parseInt(req.params.id);
+      const versions = await lineraClient.getStrategyVersions(strategyId);
+      res.json(versions);
+    } catch (error: any) {
+      console.error('Error fetching strategy versions:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // ============================================
+  // PHASE 3: EXECUTION ENGINE ROUTES
+  // ============================================
+
+  // Create multi-hop order
+  app.post('/api/orders/multi-hop', orderLimiter, async (req: Request, res: Response) => {
+    try {
+      const order = req.body;
+      const orderId = await lineraClient.createMultiHopOrder(order);
+      io.to('orders').emit('order:multi_hop_created', { orderId, order });
+      res.json({ success: true, orderId });
+    } catch (error: any) {
+      console.error('Error creating multi-hop order:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Trigger conditional order
+  app.post('/api/orders/:id/trigger', async (req: Request, res: Response) => {
+    try {
+      const orderId = parseInt(req.params.id);
+      await lineraClient.triggerConditionalOrder(orderId);
+      io.to('orders').emit('order:conditional_triggered', { orderId });
+      res.json({ success: true, orderId, message: 'Conditional order triggered' });
+    } catch (error: any) {
+      console.error('Error triggering conditional order:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Cancel conditional order
+  app.delete('/api/orders/:id/cancel', async (req: Request, res: Response) => {
+    try {
+      const orderId = parseInt(req.params.id);
+      await lineraClient.cancelConditionalOrder(orderId);
+      io.to('orders').emit('order:cancelled', { orderId });
+      res.json({ success: true, orderId, message: 'Order cancelled' });
+    } catch (error: any) {
+      console.error('Error cancelling order:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // ============================================
+  // PHASE 4: PREDICTION MARKET ROUTES
+  // ============================================
+
+  // Create prediction market
+  app.post('/api/markets', async (req: Request, res: Response) => {
+    try {
+      const market = req.body;
+      const marketId = await lineraClient.createPredictionMarket(market);
+      io.to('markets').emit('market:created', { marketId, market });
+      res.json({ success: true, marketId });
+    } catch (error: any) {
+      console.error('Error creating prediction market:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Get prediction markets
+  app.get('/api/markets', async (req: Request, res: Response) => {
+    try {
+      const limit = parseInt(req.query.limit as string) || 50;
+      const offset = parseInt(req.query.offset as string) || 0;
+      const markets = await lineraClient.getPredictionMarkets(limit, offset);
+      res.json(markets);
+    } catch (error: any) {
+      console.error('Error fetching markets:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Update market probability
+  app.put('/api/markets/:id/probability', async (req: Request, res: Response) => {
+    try {
+      const marketId = parseInt(req.params.id);
+      const { probability } = req.body;
+      await lineraClient.updateMarketProbability(marketId, probability);
+      io.to('markets').emit('market:probability_updated', { marketId, probability });
+      res.json({ success: true, marketId, probability });
+    } catch (error: any) {
+      console.error('Error updating market probability:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Resolve prediction market
+  app.post('/api/markets/:id/resolve', async (req: Request, res: Response) => {
+    try {
+      const marketId = parseInt(req.params.id);
+      const { outcome } = req.body;
+      await lineraClient.resolvePredictionMarket(marketId, outcome);
+      io.to('markets').emit('market:resolved', { marketId, outcome });
+      res.json({ success: true, marketId, outcome });
+    } catch (error: any) {
+      console.error('Error resolving market:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Link strategy to market
+  app.post('/api/markets/:id/link-strategy', async (req: Request, res: Response) => {
+    try {
+      const marketId = parseInt(req.params.id);
+      const { strategy_id, trigger_on_probability, trigger_above, enabled } = req.body;
+      const link = {
+        strategy_id,
+        market_id: marketId,
+        trigger_on_probability,
+        trigger_above,
+        enabled,
+      };
+      await lineraClient.linkStrategyToMarket(link);
+      io.to('markets').emit('market:strategy_linked', link);
+      res.json({ success: true, link });
+    } catch (error: any) {
+      console.error('Error linking strategy to market:', error);
       res.status(500).json({ error: error.message });
     }
   });

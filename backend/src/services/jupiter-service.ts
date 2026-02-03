@@ -37,11 +37,28 @@ interface JupiterSwapResponse {
 
 export class JupiterService {
   private apiUrl: string;
+  private ultraApiUrl: string;
   private apiKey: string;
 
   constructor() {
-    this.apiUrl = process.env.JUPITER_API_URL || 'https://quote-api.jup.ag/v6';
+    // Basic API (legacy v6)
+    this.apiUrl = process.env.JUPITER_API_URL || 'https://api.jup.ag';
+    // Ultra API (new, dynamic rate limiting)
+    this.ultraApiUrl = process.env.JUPITER_ULTRA_API_URL || 'https://api.jup.ag/ultra';
     this.apiKey = process.env.JUPITER_API_KEY || '';
+  }
+
+  /**
+   * Get headers with API key (required for both Basic and Ultra plans)
+   */
+  private getHeaders(): Record<string, string> {
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
+    if (this.apiKey) {
+      headers['x-api-key'] = this.apiKey;
+    }
+    return headers;
   }
 
   /**
@@ -60,17 +77,15 @@ export class JupiterService {
             onlyDirectRoutes: false,
             asLegacyTransaction: false
           },
-          headers: this.apiKey ? {
-            'X-API-KEY': this.apiKey
-          } : {}
+          headers: this.getHeaders()
         }
       );
 
       const data = response.data;
-      
+
       // Extract route information
       const route = data.routePlan.map(plan => plan.swapInfo.label);
-      
+
       // Calculate total fees
       const totalFee = data.routePlan.reduce((sum, plan) => {
         return sum + parseFloat(plan.swapInfo.feeAmount);
@@ -218,6 +233,150 @@ export class JupiterService {
     } catch (error) {
       console.error('Jupiter getPrices error:', error);
       return {};
+    }
+  }
+
+  // ==================== ULTRA API METHODS ====================
+
+  /**
+   * Ultra API: Get swap order (transaction)
+   * POST /ultra/v1/order
+   */
+  async getUltraOrder(params: {
+    inputMint: string;
+    outputMint: string;
+    amount: number;
+    taker: string; // wallet address
+    slippageBps?: number;
+  }): Promise<{ transaction: string; requestId: string }> {
+    try {
+      const response = await axios.post(
+        `${this.ultraApiUrl}/v1/order`,
+        {
+          inputMint: params.inputMint,
+          outputMint: params.outputMint,
+          amount: params.amount.toString(),
+          taker: params.taker,
+          slippageBps: params.slippageBps || 50,
+        },
+        { headers: this.getHeaders() }
+      );
+
+      return {
+        transaction: response.data.transaction,
+        requestId: response.data.requestId,
+      };
+    } catch (error) {
+      console.error('Jupiter Ultra getOrder error:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Ultra API: Execute signed transaction
+   * POST /ultra/v1/execute
+   */
+  async executeUltraOrder(params: {
+    signedTransaction: string;
+    requestId: string;
+  }): Promise<{ signature: string; status: string }> {
+    try {
+      const response = await axios.post(
+        `${this.ultraApiUrl}/v1/execute`,
+        {
+          signedTransaction: params.signedTransaction,
+          requestId: params.requestId,
+        },
+        { headers: this.getHeaders() }
+      );
+
+      return {
+        signature: response.data.signature,
+        status: response.data.status,
+      };
+    } catch (error) {
+      console.error('Jupiter Ultra execute error:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Ultra API: Get token holdings for wallet
+   * GET /ultra/v1/holdings
+   */
+  async getHoldings(walletAddress: string): Promise<Array<{
+    mint: string;
+    amount: string;
+    decimals: number;
+    uiAmount: number;
+  }>> {
+    try {
+      const response = await axios.get(
+        `${this.ultraApiUrl}/v1/holdings`,
+        {
+          params: { wallet: walletAddress },
+          headers: this.getHeaders(),
+        }
+      );
+
+      return response.data.holdings || [];
+    } catch (error) {
+      console.error('Jupiter Ultra getHoldings error:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Ultra API: Check token security (shield)
+   * GET /ultra/v1/shield
+   */
+  async checkTokenSecurity(mints: string[]): Promise<Record<string, {
+    isVerified: boolean;
+    warnings: string[];
+    isFreezeAuthority: boolean;
+    isMintAuthority: boolean;
+  }>> {
+    try {
+      const response = await axios.get(
+        `${this.ultraApiUrl}/v1/shield`,
+        {
+          params: { mints: mints.join(',') },
+          headers: this.getHeaders(),
+        }
+      );
+
+      return response.data.tokens || {};
+    } catch (error) {
+      console.error('Jupiter Ultra shield error:', error);
+      return {};
+    }
+  }
+
+  /**
+   * Ultra API: Search tokens
+   * GET /ultra/v1/search
+   */
+  async searchTokens(query: string): Promise<Array<{
+    mint: string;
+    symbol: string;
+    name: string;
+    decimals: number;
+    logoURI?: string;
+  }>> {
+    try {
+      const response = await axios.get(
+        `${this.ultraApiUrl}/v1/search`,
+        {
+          params: { query },
+          headers: this.getHeaders(),
+        }
+      );
+
+      // API returns array directly
+      return Array.isArray(response.data) ? response.data : (response.data.tokens || []);
+    } catch (error) {
+      console.error('Jupiter Ultra search error:', error);
+      return [];
     }
   }
 }

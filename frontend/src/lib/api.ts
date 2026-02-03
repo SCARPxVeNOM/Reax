@@ -286,3 +286,163 @@ export const notificationApi = {
     await apiClient.post('/api/notifications/preferences', preferences);
   },
 };
+
+// ============================================
+// PHASE 1: SAFETY & VALIDATION API
+// ============================================
+
+export const safetyApi = {
+  async createConfig(config: SafetyConfig) {
+    const { data } = await apiClient.post('/api/safety/config', config);
+    return data;
+  },
+
+  async updateConfig(config: SafetyConfig) {
+    const { data } = await apiClient.put('/api/safety/config', config);
+    return data;
+  },
+
+  async getConfig(owner: string) {
+    const { data } = await apiClient.get(`/api/safety/config/${owner}`);
+    return data;
+  },
+
+  async validateOrder(orderId: number) {
+    const { data } = await apiClient.post(`/api/orders/${orderId}/validate`);
+    return data;
+  },
+};
+
+// ============================================
+// PHASE 2: STRATEGY ENHANCEMENT API
+// ============================================
+
+export const strategyVersionApi = {
+  async updateStrategy(strategyId: number, strategy: any, changeReason?: string) {
+    const { data } = await apiClient.put(`/api/strategies/${strategyId}`, {
+      strategy,
+      change_reason: changeReason,
+    });
+    return data;
+  },
+
+  async getVersions(strategyId: number) {
+    const { data } = await apiClient.get(`/api/strategies/${strategyId}/versions`);
+    return data;
+  },
+};
+
+// ============================================
+// PHASE 3: ADVANCED ORDER API
+// ============================================
+
+export const advancedOrderApi = {
+  async createMultiHopOrder(order: DEXOrder) {
+    const { data } = await apiClient.post('/api/orders/multi-hop', order);
+    return data;
+  },
+
+  async triggerConditionalOrder(orderId: number) {
+    const { data } = await apiClient.post(`/api/orders/${orderId}/trigger`);
+    return data;
+  },
+
+  async cancelOrder(orderId: number) {
+    const { data } = await apiClient.delete(`/api/orders/${orderId}/cancel`);
+    return data;
+  },
+};
+
+// ============================================
+// PHASE 4: PREDICTION MARKET API
+// ============================================
+
+export const predictionMarketApi = {
+  async create(market: PredictionMarket) {
+    const { data } = await apiClient.post('/api/markets', market);
+    return data;
+  },
+
+  async list(limit: number = 50, offset: number = 0) {
+    const { data } = await apiClient.get('/api/markets', { params: { limit, offset } });
+    return data;
+  },
+
+  async updateProbability(marketId: number, probability: number) {
+    const { data } = await apiClient.put(`/api/markets/${marketId}/probability`, { probability });
+    return data;
+  },
+
+  async resolve(marketId: number, outcome: boolean) {
+    const { data } = await apiClient.post(`/api/markets/${marketId}/resolve`, { outcome });
+    return data;
+  },
+
+  async linkStrategy(marketId: number, link: StrategyMarketLink) {
+    const { data } = await apiClient.post(`/api/markets/${marketId}/link-strategy`, link);
+    return data;
+  },
+};
+
+// ============================================
+// TYPE DEFINITIONS FOR PHASES 1-4
+// ============================================
+
+export interface SafetyConfig {
+  owner: string;
+  max_position_per_token: number;
+  max_portfolio_exposure: number;
+  slippage_tolerance_bps: number;
+  max_slippage_bps: number;
+  require_stop_loss: boolean;
+  require_take_profit: boolean;
+  enable_auto_validation: boolean;
+}
+
+export interface DEXOrder {
+  id?: number;
+  strategy_id: number;
+  dex: 'Raydium' | 'Jupiter' | 'Binance';
+  input_mint: string;
+  output_mint: string;
+  input_amount: number;
+  output_amount: number;
+  slippage_bps: number;
+  priority_fee: number;
+  status?: string;
+  route_path?: RouteHop[];
+  is_multi_hop?: boolean;
+  conditional_trigger?: ConditionalTrigger;
+  execution_mode?: 'Immediate' | 'Conditional' | { Scheduled: { execute_at: number } };
+}
+
+export interface RouteHop {
+  dex: 'Raydium' | 'Jupiter' | 'Binance';
+  input_mint: string;
+  output_mint: string;
+  pool_address?: string;
+  expected_output: number;
+}
+
+export interface ConditionalTrigger {
+  trigger_type: 'PriceThreshold' | 'MarketProbability' | 'TimeBasedTrigger' | 'VolumeThreshold';
+  threshold: number;
+  comparison: 'GreaterThan' | 'LessThan' | 'GreaterThanOrEqual' | 'LessThanOrEqual' | 'Equal';
+  active: boolean;
+}
+
+export interface PredictionMarket {
+  id?: number;
+  question: string;
+  description: string;
+  creator: string;
+  probability?: number;
+  outcome?: boolean;
+}
+
+export interface StrategyMarketLink {
+  strategy_id: number;
+  trigger_on_probability: number;
+  trigger_above: boolean;
+  enabled: boolean;
+}

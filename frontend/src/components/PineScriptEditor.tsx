@@ -52,7 +52,7 @@ plot(slowMA, color=color.red, title="Slow MA")
 
     try {
       const result = await pineScriptApi.validate(code);
-      
+
       if (result.valid) {
         setErrors([]);
         alert('Code is valid!');
@@ -72,7 +72,7 @@ plot(slowMA, color=color.red, title="Slow MA")
 
     try {
       const result = await pineScriptApi.compile(code);
-      
+
       if (result.success) {
         setErrors([]);
         alert('Compilation successful!');
@@ -98,7 +98,6 @@ plot(slowMA, color=color.red, title="Slow MA")
         await strategyApi.update(strategyId, { code });
       } else {
         const result = await strategyApi.create({
-          userId: 'user_' + Date.now(), // Would come from auth
           name: 'New PineScript Strategy',
           type: 'PINESCRIPT',
           code,
@@ -265,7 +264,7 @@ plot(slowMA, color=color.red, title="Slow MA")
               ✕
             </button>
           </div>
-          
+
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div className="bg-gray-900 p-3 rounded">
               <div className="text-sm text-gray-400">Total Trades</div>
@@ -273,44 +272,43 @@ plot(slowMA, color=color.red, title="Slow MA")
                 {backtestResults.performance.totalTrades}
               </div>
             </div>
-            
+
             <div className="bg-gray-900 p-3 rounded">
               <div className="text-sm text-gray-400">Win Rate</div>
               <div className="text-xl font-bold text-green-400">
                 {backtestResults.performance.winRate.toFixed(2)}%
               </div>
             </div>
-            
+
             <div className="bg-gray-900 p-3 rounded">
               <div className="text-sm text-gray-400">Total Return</div>
-              <div className={`text-xl font-bold ${
-                backtestResults.performance.totalReturn >= 0 ? 'text-green-400' : 'text-red-400'
-              }`}>
+              <div className={`text-xl font-bold ${backtestResults.performance.totalReturn >= 0 ? 'text-green-400' : 'text-red-400'
+                }`}>
                 {backtestResults.performance.totalReturn.toFixed(2)}%
               </div>
             </div>
-            
+
             <div className="bg-gray-900 p-3 rounded">
               <div className="text-sm text-gray-400">Sharpe Ratio</div>
               <div className="text-xl font-bold text-white">
                 {backtestResults.performance.sharpeRatio.toFixed(2)}
               </div>
             </div>
-            
+
             <div className="bg-gray-900 p-3 rounded">
               <div className="text-sm text-gray-400">Max Drawdown</div>
               <div className="text-xl font-bold text-red-400">
                 {backtestResults.performance.maxDrawdown.toFixed(2)}%
               </div>
             </div>
-            
+
             <div className="bg-gray-900 p-3 rounded">
               <div className="text-sm text-gray-400">Winning Trades</div>
               <div className="text-xl font-bold text-green-400">
                 {backtestResults.performance.winningTrades}
               </div>
             </div>
-            
+
             <div className="bg-gray-900 p-3 rounded">
               <div className="text-sm text-gray-400">Losing Trades</div>
               <div className="text-xl font-bold text-red-400">

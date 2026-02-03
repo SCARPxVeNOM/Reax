@@ -1,32 +1,29 @@
-import type { Metadata } from 'next'
-import { Inter } from 'next/font/google'
-import './globals.css'
-import { LineraProvider } from '../components/LineraProvider'
-import { Navigation } from '../components/Navigation'
+'use client';
 
-const inter = Inter({ subsets: ['latin'] })
-
-export const metadata: Metadata = {
-  title: 'LineraTrade AI - Advanced Trading Platform',
-  description: 'Multi-DEX trading, PineScript strategies, and social trading on Linera microchains',
-}
+import './globals.css';
+import { LineraProvider } from '@/components/LineraProvider';
+import { Navigation } from '@/components/Navigation';
 
 export default function RootLayout({
   children,
 }: {
-  children: React.ReactNode
+  children: React.ReactNode;
 }) {
   return (
     <html lang="en">
       <head>
-        {/* Linera service runs on port 8080 and provides GraphQL API */}
+        <title>ReaX | Microchain Social Trading</title>
+        <meta name="description" content="Web3-native social trading platform with Linera Microchains - Zero Latency, Infinite Scalability" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
       </head>
-      <body className={inter.className}>
+      <body>
         <LineraProvider>
           <Navigation />
-          {children}
+          <main className="min-h-screen">
+            {children}
+          </main>
         </LineraProvider>
       </body>
     </html>
-  )
+  );
 }

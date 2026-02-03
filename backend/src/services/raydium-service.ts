@@ -52,7 +52,7 @@ export class RaydiumService {
   }
 
   /**
-   * Get swap quote from Raydium
+   * Get swap quote from Raydium (swap-base-in: specify exact input amount)
    */
   async getQuote(params: QuoteParams): Promise<Quote> {
     try {
@@ -63,7 +63,7 @@ export class RaydiumService {
             inputMint: params.inputMint,
             outputMint: params.outputMint,
             amount: params.amount,
-            slippageBps: params.slippageBps,
+            slippageBps: params.slippageBps || 50,
             txVersion: 'V0'
           }
         }
@@ -76,12 +76,17 @@ export class RaydiumService {
       const data = response.data.data;
       const route = data.routePlan.map((r: any) => r.poolId || 'direct');
 
+      // Calculate actual fee from routePlan
+      const totalFee = data.routePlan.reduce((sum: number, r: any) => {
+        return sum + parseFloat(r.feeAmount || '0');
+      }, 0);
+
       return {
         dex: DEX.RAYDIUM,
         inputAmount: parseFloat(data.inputAmount),
         outputAmount: parseFloat(data.outputAmount),
         priceImpact: data.priceImpactPct,
-        fee: 0.0025 * parseFloat(data.inputAmount), // 0.25% fee estimate
+        fee: totalFee,
         route,
         minimumReceived: parseFloat(data.otherAmountThreshold)
       };
@@ -92,7 +97,53 @@ export class RaydiumService {
   }
 
   /**
-   * Get priority fee recommendations
+   * Get swap quote from Raydium (swap-base-out: specify exact output amount)
+   * Slippage applies to input amount
+   */
+  async getQuoteBaseOut(params: QuoteParams): Promise<Quote> {
+    try {
+      const response = await axios.get<RaydiumSwapCompute>(
+        `${this.apiUrl}/compute/swap-base-out`,
+        {
+          params: {
+            inputMint: params.inputMint,
+            outputMint: params.outputMint,
+            amount: params.amount, // This is the desired output amount
+            slippageBps: params.slippageBps || 50,
+            txVersion: 'V0'
+          }
+        }
+      );
+
+      if (!response.data.success) {
+        throw new Error('Failed to get Raydium quote (base-out)');
+      }
+
+      const data = response.data.data;
+      const route = data.routePlan.map((r: any) => r.poolId || 'direct');
+
+      const totalFee = data.routePlan.reduce((sum: number, r: any) => {
+        return sum + parseFloat(r.feeAmount || '0');
+      }, 0);
+
+      return {
+        dex: DEX.RAYDIUM,
+        inputAmount: parseFloat(data.inputAmount),
+        outputAmount: parseFloat(data.outputAmount),
+        priceImpact: data.priceImpactPct,
+        fee: totalFee,
+        route,
+        minimumReceived: parseFloat(data.otherAmountThreshold)
+      };
+    } catch (error) {
+      console.error('Raydium getQuoteBaseOut error:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get priority fee recommendations from Raydium
+   * Returns { vh: very high, h: high, m: medium } in micro-lamports
    */
   async getPriorityFee(): Promise<RaydiumPriorityFee> {
     try {
@@ -106,9 +157,9 @@ export class RaydiumService {
         success: true,
         data: {
           default: {
-            vh: 100000,
-            h: 50000,
-            m: 10000
+            vh: 100000, // Very high
+            h: 50000,   // High
+            m: 10000    // Medium
           }
         }
       };
@@ -197,7 +248,7 @@ export class RaydiumService {
 
       // Note: In production, the transaction would be signed by the client wallet
       // and sent back to be executed. For now, we return pending status.
-      
+
       return {
         signature: 'pending', // Would be actual signature after client signs
         status: 'pending',

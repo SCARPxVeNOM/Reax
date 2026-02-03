@@ -36,6 +36,24 @@ export function Sidebar({ activeSection, onSectionChange }: SidebarProps) {
       badge: null,
     },
     {
+      section: 'safety',
+      label: 'Safety',
+      icon: '🛡️',
+      badge: null,
+    },
+    {
+      section: 'markets',
+      label: 'Markets',
+      icon: '🔮',
+      badge: null,
+    },
+    {
+      section: 'advanced',
+      label: 'Advanced',
+      icon: '⚡',
+      badge: null,
+    },
+    {
       section: 'analytics',
       label: 'Analytics',
       icon: '📈',
@@ -76,11 +94,10 @@ export function Sidebar({ activeSection, onSectionChange }: SidebarProps) {
           <button
             key={item.section}
             onClick={() => onSectionChange(item.section)}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
-              activeSection === item.section
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${activeSection === item.section
                 ? 'bg-blue-600 text-white'
                 : 'text-gray-300 hover:bg-gray-700'
-            }`}
+              }`}
           >
             <span className="text-xl">{item.icon}</span>
             {!collapsed && (
@@ -100,9 +117,8 @@ export function Sidebar({ activeSection, onSectionChange }: SidebarProps) {
       {/* Bottom section */}
       <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-gray-700">
         <button
-          className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-gray-300 hover:bg-gray-700 transition-colors ${
-            activeSection === 'help' ? 'bg-gray-700' : ''
-          }`}
+          className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-gray-300 hover:bg-gray-700 transition-colors ${activeSection === 'help' ? 'bg-gray-700' : ''
+            }`}
           onClick={() => onSectionChange('help')}
         >
           <span>❓</span>

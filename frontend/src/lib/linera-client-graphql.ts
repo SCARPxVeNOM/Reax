@@ -20,12 +20,19 @@ export class LineraGraphQLClient {
   constructor() {
     this.applicationId = process.env.NEXT_PUBLIC_LINERA_APP_ID || '';
     const serviceUrl = process.env.NEXT_PUBLIC_LINERA_SERVICE_URL || 'http://localhost:8080';
-    
+
     this.client = new GraphQLClient(serviceUrl, {
       headers: {
         'Content-Type': 'application/json',
       },
     });
+  }
+
+  /**
+   * Raw GraphQL request method
+   */
+  async request<T = any>(document: string, variables?: Record<string, any>): Promise<T> {
+    return this.client.request<T>(document, variables);
   }
 
   /**
@@ -143,9 +150,9 @@ export class LineraGraphQLClient {
       query GetStrategies {
         queryApplication(
           applicationId: "${this.applicationId}",
-          query: ${JSON.stringify({ 
-            GetStrategies: { owner, limit, offset } 
-          })}
+          query: ${JSON.stringify({
+      GetStrategies: { owner, limit, offset }
+    })}
         )
       }
     `;
@@ -168,14 +175,14 @@ export class LineraGraphQLClient {
       query GetOrders {
         queryApplication(
           applicationId: "${this.applicationId}",
-          query: ${JSON.stringify({ 
-            GetOrders: {
-              strategy_id: strategyId,
-              status,
-              limit,
-              offset
-            } 
-          })}
+          query: ${JSON.stringify({
+      GetOrders: {
+        strategy_id: strategyId,
+        status,
+        limit,
+        offset
+      }
+    })}
         )
       }
     `;
@@ -193,7 +200,7 @@ export class LineraGraphQLClient {
   async subscribeToEvents(callback: (event: any) => void): Promise<() => void> {
     // Polling approach - query every 1 second
     let intervalId: NodeJS.Timeout;
-    
+
     const poll = async () => {
       try {
         const signals = await this.getSignals(1, 0);

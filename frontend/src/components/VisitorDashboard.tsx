@@ -95,60 +95,67 @@ const dummyStrategies = [
   },
 ];
 
-const dummyOrders = [
-  {
-    id: 1001,
-    strategy_id: 101,
-    signal_id: 1,
-    order_type: 'BUY',
-    token: 'BTC',
-    quantity: 0.01,
-    status: 'Filled',
-    tx_hash: '0xabc123def4567890...',
-    fill_price: 38005.20,
-    created_at: Math.floor(Date.now() / 1000) - 3600,
-    filled_at: Math.floor(Date.now() / 1000) - 3595,
-  },
-  {
-    id: 1002,
-    strategy_id: 102,
-    signal_id: 2,
-    order_type: 'SELL',
-    token: 'ETH',
-    quantity: 0.5,
-    status: 'Pending',
-    tx_hash: null,
-    fill_price: null,
-    created_at: Math.floor(Date.now() / 1000) - 1800,
-    filled_at: null,
-  },
-  {
-    id: 1003,
-    strategy_id: 103,
-    signal_id: 3,
-    order_type: 'BUY',
-    token: 'SOL',
-    quantity: 10.0,
-    status: 'Submitted',
-    tx_hash: '0xdef456abc123...',
-    fill_price: null,
-    created_at: Math.floor(Date.now() / 1000) - 900,
-    filled_at: null,
-  },
-  {
-    id: 1004,
-    strategy_id: 101,
-    signal_id: 4,
-    order_type: 'BUY',
-    token: 'AVAX',
-    quantity: 5.0,
-    status: 'Filled',
-    tx_hash: '0x789abc123def...',
-    fill_price: 45.30,
-    created_at: Math.floor(Date.now() / 1000) - 600,
-    filled_at: Math.floor(Date.now() / 1000) - 595,
-  },
-];
+const dummyOrders: Array<{
+  id: number;
+  strategy_id: number;
+  signal_id: number;
+  order_type: string;
+  token: string;
+  quantity: number;
+  status: string;
+  tx_hash?: string;
+  fill_price?: number;
+  created_at: number;
+  filled_at?: number;
+}> = [
+    {
+      id: 1001,
+      strategy_id: 101,
+      signal_id: 1,
+      order_type: 'BUY',
+      token: 'BTC',
+      quantity: 0.01,
+      status: 'Filled',
+      tx_hash: '0xabc123def4567890...',
+      fill_price: 38005.20,
+      created_at: Math.floor(Date.now() / 1000) - 3600,
+      filled_at: Math.floor(Date.now() / 1000) - 3595,
+    },
+    {
+      id: 1002,
+      strategy_id: 102,
+      signal_id: 2,
+      order_type: 'SELL',
+      token: 'ETH',
+      quantity: 0.5,
+      status: 'Pending',
+      created_at: Math.floor(Date.now() / 1000) - 1800,
+    },
+    {
+      id: 1003,
+      strategy_id: 103,
+      signal_id: 3,
+      order_type: 'BUY',
+      token: 'SOL',
+      quantity: 10.0,
+      status: 'Submitted',
+      tx_hash: '0xdef456abc123...',
+      created_at: Math.floor(Date.now() / 1000) - 900,
+    },
+    {
+      id: 1004,
+      strategy_id: 101,
+      signal_id: 4,
+      order_type: 'BUY',
+      token: 'AVAX',
+      quantity: 5.0,
+      status: 'Filled',
+      tx_hash: '0x789abc123def...',
+      fill_price: 45.30,
+      created_at: Math.floor(Date.now() / 1000) - 600,
+      filled_at: Math.floor(Date.now() / 1000) - 595,
+    },
+  ];
 
 const dummyPerformanceData = [
   { timestamp: Math.floor(Date.now() / 1000) - 86400 * 14, pnl: 5.20 },
@@ -213,8 +220,8 @@ export function VisitorDashboard() {
         <div className="grid grid-cols-12 gap-6">
           {/* Live Signal Feed */}
           <div className="col-span-4">
-            <SignalFeed 
-              signals={dummySignals} 
+            <SignalFeed
+              signals={dummySignals}
               loading={false}
               onRefresh={handleRefreshDummy}
             />
@@ -233,8 +240,8 @@ export function VisitorDashboard() {
 
           {/* Recent Orders */}
           <div className="col-span-4">
-            <OrdersList 
-              orders={dummyOrders} 
+            <OrdersList
+              orders={dummyOrders}
               loading={false}
               onRefresh={handleRefreshDummy}
             />
@@ -285,8 +292,8 @@ export function VisitorDashboard() {
             <div>
               <h3 className="font-bold text-yellow-900 mb-1">About This Demo</h3>
               <p className="text-sm text-yellow-800">
-                This demo showcases the platform's features with simulated data. In the real implementation, 
-                all data comes from the Linera blockchain in real-time. Strategies can be created, activated, 
+                This demo showcases the platform's features with simulated data. In the real implementation,
+                all data comes from the Linera blockchain in real-time. Strategies can be created, activated,
                 and orders are executed automatically based on AI-analyzed trading signals.
               </p>
             </div>

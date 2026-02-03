@@ -14,6 +14,11 @@ import { SignalsByTokenChart } from './SignalsByTokenChart';
 import { ImportTweetsButton } from './ImportTweetsButton';
 import { MonitoredUsers } from './MonitoredUsers';
 import { DexIntegrations } from './DexIntegrations';
+// Phase 1-4 Components
+import { SafetyConfigPanel } from './SafetyConfigPanel';
+import { PredictionMarkets } from './PredictionMarkets';
+import { AdvancedOrderForm } from './AdvancedOrderForm';
+import { StrategyVersionHistory } from './StrategyVersionHistory';
 
 export function TradingDashboard() {
   const [activeSection, setActiveSection] = useState('dashboard');
@@ -28,7 +33,7 @@ export function TradingDashboard() {
     const activeStrategies = strategies.filter(s => s.active).length;
     const pendingOrders = orders.filter(o => o.status === 'Pending').length;
     const completedOrders = orders.filter(o => o.status === 'Filled' || o.status === 'Completed').length;
-    
+
     // Calculate percentage changes (mock for now, can be enhanced with historical data)
     const signalChange = signals.length > 0 ? 12.5 : 0;
     const strategyChange = strategies.length > 0 ? 8.2 : 0;
@@ -184,7 +189,7 @@ export function TradingDashboard() {
               <div className="glass-panel rounded-xl p-6">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-lg font-semibold text-gray-800">Trading Performance</h3>
-                  <select 
+                  <select
                     style={{ color: '#1f2937' }}
                     className="glass-input text-sm text-gray-800 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-400"
                   >
@@ -200,7 +205,7 @@ export function TradingDashboard() {
               <div className="glass-panel rounded-xl p-6">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-lg font-semibold text-gray-800">Signals by Token</h3>
-                  <select 
+                  <select
                     style={{ color: '#1f2937' }}
                     className="glass-input text-sm text-gray-800 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-400"
                   >
@@ -303,6 +308,41 @@ export function TradingDashboard() {
         );
       case 'settings':
         return <MonitoredUsers />;
+      case 'safety':
+        return (
+          <div className="space-y-6">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-800">Safety & Risk Management</h1>
+              <p className="text-gray-600 mt-1">Configure position limits, slippage tolerance, and safety requirements</p>
+            </div>
+            <SafetyConfigPanel owner="default-user" />
+          </div>
+        );
+      case 'markets':
+        return (
+          <div className="space-y-6">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-800">Prediction Markets</h1>
+              <p className="text-gray-600 mt-1">Create and trade on market predictions linked to strategies</p>
+            </div>
+            <PredictionMarkets userId="default-user" />
+          </div>
+        );
+      case 'advanced':
+        return (
+          <div className="space-y-6">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-800">Advanced Orders</h1>
+              <p className="text-gray-600 mt-1">Create multi-hop and conditional orders</p>
+            </div>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <AdvancedOrderForm strategyId={1} />
+              {strategies.length > 0 && (
+                <StrategyVersionHistory strategyId={strategies[0].id} />
+              )}
+            </div>
+          </div>
+        );
       default:
         return (
           <div className="text-center py-12">

@@ -1,9 +1,15 @@
+version: '3.8'
+
 services:
+  # ============================================
+  # Infrastructure Services
+  # ============================================
+  
   postgres:
     image: postgres:15-alpine
-    container_name: lineratrade-postgres
+    container_name: reax-postgres
     environment:
-      POSTGRES_DB: lineratrade
+      POSTGRES_DB: reax
       POSTGRES_USER: admin
       POSTGRES_PASSWORD: password
     ports:
@@ -11,14 +17,16 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U admin"]
+      test: ["CMD-SHELL", "pg_isready -U admin -d reax"]
       interval: 10s
       timeout: 5s
       retries: 5
+    networks:
+      - reax-network
 
   redis:
     image: redis:7-alpine
-    container_name: lineratrade-redis
+    container_name: reax-redis
     ports:
       - "6379:6379"
     volumes:
@@ -28,32 +36,67 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    networks:
+      - reax-network
 
-  linera-node:
-    image: ghcr.io/linera-io/linera-service:latest
-    container_name: lineratrade-linera
+  # ============================================
+  # ReaX Application Services
+  # ============================================
+
+  # All-in-one container: Linera + Backend + Frontend
+  reax-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: reax-app
+    environment:
+      # Infrastructure
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: reax
+      DB_USER: admin
+      DB_PASSWORD: password
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      # Linera
+      TESTNET_FAUCET: https://faucet.testnet-conway.linera.net/
+      LINERA_SERVICE_PORT: 8081
+      # App Ports
+      BACKEND_PORT: 3001
+      FRONTEND_PORT: 3000
+      # Solana (for trading)
+      SOLANA_RPC_URL: ${SOLANA_RPC_URL:-https://api.mainnet-beta.solana.com}
+      JUPITER_API_KEY: ${JUPITER_API_KEY:-}
     ports:
-      - "8080:8080"   # Linera faucet
-      - "8081:8081"   # Linera service (GraphQL/JSON-RPC depending on image)
-      - "9001:9001"   # Validator proxy
-      - "13001:13001" # Validator
+      - "3000:3000"   # Frontend
+      - "3001:3001"   # Backend API
+      - "8081:8081"   # Linera Service (GraphQL)
     volumes:
-      - ./linera-app:/app
-      - linera_data:/data
-    command: >
-      sh -c "linera net up --testing-prng-seed 37 &&
-             linera service --port 8081"
+      - linera_wallet:/root/.linera  # Persist Linera wallet
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8081/"]
+      test: ["CMD", "curl", "-f", "http://localhost:3000"]
       interval: 30s
       timeout: 10s
+      start_period: 120s  # Linera app build can take time
       retries: 5
+    networks:
+      - reax-network
+    restart: unless-stopped
 
 volumes:
   postgres_data:
+    name: reax-postgres-data
   redis_data:
-  linera_data:
+    name: reax-redis-data
+  linera_wallet:
+    name: reax-linera-wallet
 
 networks:
-  default:
-    name: lineratrade-network
+  reax-network:
+    name: reax-network
+    driver: bridge

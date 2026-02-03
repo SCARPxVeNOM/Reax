@@ -20,7 +20,24 @@ pub struct Signal {
     pub platform: Option<String>, // "DEX" or "CEX"
 }
 
-/// User trading strategy
+// ============================================
+// PHASE 2: STRATEGY ENHANCEMENTS
+// ============================================
+
+/// Source of the strategy
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub enum StrategySource {
+    /// User-created strategy
+    Manual { author: String },
+    /// Strategy from community posts
+    Community { author: String, post_id: String },
+    /// Curated by trusted traders
+    Curated { curator: String, rating: f64 },
+    /// Triggered by prediction market signals
+    PredictionMarket { market_id: u64 },
+}
+
+/// User trading strategy with versioning and risk parameters
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Strategy {
     pub id: u64,
@@ -29,6 +46,25 @@ pub struct Strategy {
     pub strategy_type: StrategyType,
     pub active: bool,
     pub created_at: u64,
+    // Phase 2: Versioning
+    pub version: u64,
+    pub updated_at: Option<u64>,
+    // Phase 2: Source tracking
+    pub source: StrategySource,
+    // Phase 2: Risk parameters
+    pub risk_percentage: f64,       // Max % of portfolio to risk per trade
+    pub max_exposure: f64,          // Max total exposure in USD
+    pub slippage_bps: u16,          // Max slippage tolerance in basis points
+}
+
+/// Strategy version history entry
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct StrategyVersion {
+    pub strategy_id: u64,
+    pub version: u64,
+    pub strategy_snapshot: Strategy,
+    pub changed_at: u64,
+    pub change_reason: Option<String>,
 }
 
 /// Strategy type: Form-based or DSL code
@@ -83,7 +119,54 @@ pub enum DEX {
     Binance,
 }
 
-/// DEX Order
+// ============================================
+// PHASE 3: EXECUTION ENGINE ENHANCEMENTS
+// ============================================
+
+/// Comparison operators for conditional triggers
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub enum Comparison {
+    GreaterThan,
+    LessThan,
+    GreaterThanOrEqual,
+    LessThanOrEqual,
+    Equal,
+}
+
+/// Trigger types for conditional execution
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub enum TriggerType {
+    /// Execute when price reaches threshold
+    PriceThreshold { token: String },
+    /// Execute when prediction market probability crosses threshold
+    MarketProbability { market_id: u64 },
+    /// Execute at specific timestamp
+    TimeBasedTrigger,
+    /// Execute when volume exceeds threshold
+    VolumeThreshold { token: String },
+}
+
+/// Conditional trigger for order execution
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct ConditionalTrigger {
+    pub trigger_type: TriggerType,
+    pub threshold: f64,
+    pub comparison: Comparison,
+    pub active: bool,
+    pub triggered_at: Option<u64>,
+}
+
+/// Single hop in multi-hop route
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct RouteHop {
+    pub dex: DEX,
+    pub input_mint: String,
+    pub output_mint: String,
+    pub pool_address: Option<String>,
+    pub expected_output: u64,
+}
+
+/// DEX Order with multi-hop routing and conditional execution
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct DEXOrder {
     pub id: u64,
@@ -99,6 +182,23 @@ pub struct DEXOrder {
     pub tx_signature: Option<String>,
     pub created_at: u64,
     pub executed_at: Option<u64>,
+    // Phase 3: Multi-hop routing
+    pub route_path: Vec<RouteHop>,
+    pub is_multi_hop: bool,
+    // Phase 3: Conditional execution
+    pub conditional_trigger: Option<ConditionalTrigger>,
+    pub execution_mode: ExecutionMode,
+}
+
+/// Execution mode for orders
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub enum ExecutionMode {
+    /// Execute immediately
+    Immediate,
+    /// Execute when condition is met
+    Conditional,
+    /// Execute at scheduled time
+    Scheduled { execute_at: u64 },
 }
 
 /// Strategy Follower
@@ -131,6 +231,75 @@ pub struct TradeReplication {
     pub status: ReplicationStatus,
 }
 
+// ============================================
+// PHASE 1: SAFETY & VALIDATION CONTROLS
+// ============================================
+
+/// Safety configuration for risk management
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct SafetyConfig {
+    pub id: u64,
+    pub owner: String,
+    /// Maximum position size per token (in USD equivalent)
+    pub max_position_per_token: f64,
+    /// Maximum total portfolio exposure (in USD)
+    pub max_total_exposure: f64,
+    /// Maximum slippage allowed (in basis points, e.g., 50 = 0.5%)
+    pub max_slippage_bps: u16,
+    /// Maximum loss percentage before fail-safe triggers
+    pub max_loss_percentage: f64,
+    /// Require stop-loss on all orders
+    pub require_stop_loss: bool,
+    /// Enable automatic fail-safe reverts
+    pub fail_safe_enabled: bool,
+    /// Minimum gas/balance required before execution
+    pub min_balance_required: f64,
+}
+
+/// Order validation status
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub enum ValidationStatus {
+    Pending,
+    Approved,
+    Rejected { reason: String },
+}
+
+/// Validated order with safety checks
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct ValidatedOrder {
+    pub order_id: u64,
+    pub validation_status: ValidationStatus,
+    pub checks_passed: Vec<String>,
+    pub checks_failed: Vec<String>,
+    pub validated_at: u64,
+}
+
+// ============================================
+// PHASE 4: PREDICTION MARKET INTEGRATION
+// ============================================
+
+/// Prediction market for strategy triggers
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct PredictionMarket {
+    pub id: u64,
+    pub question: String,
+    pub outcome: Option<bool>,  // None = unresolved
+    pub probability: f64,       // 0.0 - 1.0
+    pub created_at: u64,
+    pub resolved_at: Option<u64>,
+}
+
+/// Link between strategy and prediction market
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct StrategyMarketLink {
+    pub strategy_id: u64,
+    pub market_id: u64,
+    /// Probability threshold to trigger strategy activation
+    pub trigger_probability: f64,
+    /// Activate when probability is above (true) or below (false) threshold
+    pub activate_above: bool,
+}
+
 /// Operations that modify state
 #[derive(Debug, Deserialize, Serialize)]
 pub enum Operation {
@@ -161,6 +330,23 @@ pub enum Operation {
         follower_id: String,
         scale_factor: f64,
     },
+    // Safety & Validation Operations (Phase 1)
+    CreateSafetyConfig { config: SafetyConfig },
+    UpdateSafetyConfig { config: SafetyConfig },
+    ValidateOrder { order_id: u64 },
+    // Prediction Market Operations (Phase 4)
+    CreatePredictionMarket { market: PredictionMarket },
+    UpdateMarketProbability { market_id: u64, probability: f64 },
+    ResolvePredictionMarket { market_id: u64, outcome: bool },
+    LinkStrategyToMarket { link: StrategyMarketLink },
+    // Strategy Enhancement Operations (Phase 2)
+    UpdateStrategy { strategy: Strategy, change_reason: Option<String> },
+    GetStrategyHistory { strategy_id: u64 },
+    // Execution Engine Operations (Phase 3)
+    CreateMultiHopOrder { order: DEXOrder },
+    CheckConditionalOrders,
+    TriggerConditionalOrder { order_id: u64 },
+    CancelConditionalOrder { order_id: u64 },
 }
 
 /// Events emitted by the application
@@ -204,6 +390,23 @@ pub enum Event {
         follower_id: String,
         reason: String,
     },
+    // Safety & Validation Events (Phase 1)
+    SafetyConfigCreated { config_id: u64, owner: String },
+    SafetyConfigUpdated { config_id: u64 },
+    OrderValidated { order_id: u64, status: ValidationStatus },
+    OrderRejectedBySafety { order_id: u64, reason: String },
+    // Prediction Market Events (Phase 4)
+    PredictionMarketCreated { market_id: u64, question: String },
+    MarketProbabilityUpdated { market_id: u64, probability: f64 },
+    PredictionMarketResolved { market_id: u64, outcome: bool },
+    StrategyLinkedToMarket { strategy_id: u64, market_id: u64 },
+    StrategyTriggeredByMarket { strategy_id: u64, market_id: u64 },
+    // Strategy Enhancement Events (Phase 2)
+    StrategyUpdated { strategy_id: u64, new_version: u64 },
+    // Execution Engine Events (Phase 3)
+    MultiHopOrderCreated { order_id: u64, hop_count: usize },
+    ConditionalOrderTriggered { order_id: u64 },
+    ConditionalOrderCancelled { order_id: u64 },
 }
 
 /// Query operations for read-only access
@@ -224,6 +427,15 @@ pub enum Query {
         offset: usize,
     },
     GetOrder { id: u64 },
+    // Safety & Validation Queries
+    GetSafetyConfig { owner: String },
+    GetOrderValidation { order_id: u64 },
+    // Prediction Market Queries
+    GetPredictionMarkets { limit: usize, offset: usize },
+    GetPredictionMarket { id: u64 },
+    GetStrategyMarketLinks { strategy_id: u64 },
+    // Strategy Enhancement Queries (Phase 2)
+    GetStrategyVersions { strategy_id: u64 },
 }
 
 /// Query response types
@@ -235,6 +447,15 @@ pub enum QueryResponse {
     Strategy(Option<Strategy>),
     Orders(Vec<Order>),
     Order(Option<Order>),
+    // Safety & Validation Responses
+    SafetyConfig(Option<SafetyConfig>),
+    OrderValidation(Option<ValidatedOrder>),
+    // Prediction Market Responses
+    PredictionMarkets(Vec<PredictionMarket>),
+    PredictionMarket(Option<PredictionMarket>),
+    StrategyMarketLinks(Vec<StrategyMarketLink>),
+    // Strategy Enhancement Responses (Phase 2)
+    StrategyVersions(Vec<StrategyVersion>),
 }
 
 use linera_sdk::abi::{ContractAbi, ServiceAbi};

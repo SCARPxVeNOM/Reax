@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # LineraTrade AI - Complete Platform Startup Script
 # This script handles everything: wallet init, deployment, and service startup
-# Follows linCasino testnet connection pattern
+
 
 set -eu
 
@@ -16,28 +16,28 @@ NC='\033[0m'
 
 # Port Configuration
 LINERA_SERVICE_PORT=8081
-BACKEND_PORT=3001
+BACKEND_PORT=3003
 FRONTEND_PORT=3000
 LINERA_MAX_PENDING_MESSAGES=100
 
-# Add cargo bin directory to PATH (where linera is installed) - same as linCasino
+# Add cargo bin directory to PATH (where linera is installed)
 export PATH="$HOME/.cargo/bin:$PWD/target/debug:$PATH"
 
 # -----------------------------------------------------------------------------------------------------------------
-# Connect to Testnet Conway (exactly like linCasino)
+# Connect to Testnet Conway 
 # -----------------------------------------------------------------------------------------------------------------
 
 # Use Testnet Conway faucet
 FAUCET_URL="https://faucet.testnet-conway.linera.net/"
 GRAPHQL_URL="http://localhost:$LINERA_SERVICE_PORT"
 
-# Set temporary directory for wallets and storage (if not already set) - linCasino pattern
+# Set temporary directory for wallets and storage 
 if [ -z "${LINERA_TMP_DIR:-}" ]; then
   export LINERA_TMP_DIR="${TMPDIR:-/tmp}/linera_testnet"
   mkdir -p "$LINERA_TMP_DIR"
 fi
 
-# Export wallet variables for wallet 1 (following linCasino naming)
+# Export wallet variables for wallet 1 
 export LINERA_WALLET_1="$LINERA_TMP_DIR/wallet_1.json"
 export LINERA_KEYSTORE_1="$LINERA_TMP_DIR/keystore_1.json"
 export LINERA_STORAGE_1="rocksdb:$LINERA_TMP_DIR/client_1.db"
@@ -77,7 +77,7 @@ kill_port() {
 }
 
 # ----------------------------------------------------------
-# [FUNCTION] Initiate New Wallet from Faucet (linCasino pattern)
+# [FUNCTION] Initiate New Wallet from Faucet 
 # ----------------------------------------------------------
 initiate_new_wallet_from_faucet() {
   # Ensure Wallet_Number is passed as the first argument
@@ -105,7 +105,7 @@ initiate_new_wallet_from_faucet() {
 }
 
 # ----------------------------------------------------------
-# [FUNCTION] Open Chain from Faucet (linCasino pattern)
+# [FUNCTION] Open Chain from Faucet 
 # ----------------------------------------------------------
 open_chain_from_faucet() {
   # Ensure Wallet_Number is passed as the first argument
@@ -129,7 +129,7 @@ echo -e "${BLUE}Step 1: Checking Prerequisites${NC}"
 echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo ""
 
-# Verify linera is available (same check as linCasino)
+# Verify linera is available 
 if ! command_exists linera; then
     echo -e "${RED}❌ Linera CLI not found${NC}"
     echo "Please install Linera CLI first:"
@@ -179,28 +179,28 @@ echo -e "   LINERA_STORAGE_1:  ${CYAN}$LINERA_STORAGE_1${NC}"
 echo ""
 
 # -----------------------------------------------------------------------------------------------------------------
-# Wallet Initialization (using linCasino functions)
+# Wallet Initialization 
 # -----------------------------------------------------------------------------------------------------------------
 echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo -e "${BLUE}Step 2: Wallet Initialization${NC}"
 echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo ""
 
-# Initialize wallet 1 using linCasino function
+# Initialize wallet 1
 INITIATE_WALLET_1=$(initiate_new_wallet_from_faucet 1)
 echo "$INITIATE_WALLET_1"
 
 echo ""
 
 # -----------------------------------------------------------------------------------------------------------------
-# Chain Setup (using linCasino functions)
+# Chain Setup 
 # -----------------------------------------------------------------------------------------------------------------
 echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo -e "${BLUE}Step 3: Chain Setup${NC}"
 echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo ""
 
-# Request default chain using linCasino function
+# Request default chain 
 echo -e "${YELLOW}Requesting default chain from Testnet Conway faucet...${NC}"
 OPEN_NEW_DEFAULT_CHAIN=$(open_chain_from_faucet 1)
 mapfile -t StringArray <<< "$OPEN_NEW_DEFAULT_CHAIN"
@@ -209,14 +209,14 @@ CHAIN_ID=${StringArray[0]}
 echo -e "${GREEN}✅ Default chain created: $CHAIN_ID${NC}"
 echo ""
 
-# Sync and check balance (linCasino pattern)
+# Sync and check balance 
 linera --with-wallet 1 sync && linera --with-wallet 1 query-balance
 sleep 1
 
 echo ""
 
 # -----------------------------------------------------------------------------------------------------------------
-# Build and Deploy Application (linCasino pattern - uses project publish-and-create)
+# Build and Deploy Application ( uses project publish-and-create)
 # -----------------------------------------------------------------------------------------------------------------
 echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo -e "${BLUE}Step 4: Deploying Application${NC}"
@@ -226,11 +226,11 @@ echo ""
 cd linera-app
 
 echo -e "${YELLOW}Deploying Trade AI application to Testnet Conway...${NC}"
-echo -e "${CYAN}(Using 'project publish-and-create' which auto-builds - linCasino pattern)${NC}"
+echo -e "${CYAN}(Using 'project publish-and-create' which auto-builds )${NC}"
 echo -e "${CYAN}(This may take 5-15 minutes)${NC}"
 echo ""
 
-# Deploy using linCasino pattern: project publish-and-create (auto-builds and deploys)
+# Deploy using  pattern: project publish-and-create (auto-builds and deploys)
 DEPLOY_OUTPUT=$(linera --with-wallet 1 --wait-for-outgoing-messages project publish-and-create . trade-ai 2>&1)
 
 if [ $? -eq 0 ]; then
@@ -271,6 +271,7 @@ NEXT_PUBLIC_LINERA_NETWORK=testnet-conway
 NEXT_PUBLIC_LINERA_FAUCET_URL=$FAUCET_URL
 NEXT_PUBLIC_API_URL=http://localhost:$BACKEND_PORT
 NEXT_PUBLIC_WS_URL=http://localhost:$BACKEND_PORT
+NEXT_PUBLIC_BACKEND_PORT=$BACKEND_PORT
 EOF
 
 echo -e "${GREEN}✅ Frontend config updated${NC}"
@@ -293,14 +294,15 @@ DB_USER=admin
 DB_PASSWORD=password
 
 # API Configuration
-PORT=3001
+PORT=3003
 FRONTEND_URL=http://localhost:3000
 
 # DEX Configuration
 RAYDIUM_API_URL=https://transaction-v1.raydium.io
 RAYDIUM_PRIORITY_FEE_URL=https://api-v3.raydium.io/main/auto-fee
-JUPITER_API_URL=https://quote-api.jup.ag/v6
-JUPITER_API_KEY=bcdb9c6b-a590-4fad-b4d4-06990836d9f0
+JUPITER_API_URL=https://api.jup.ag
+JUPITER_ULTRA_API_URL=https://api.jup.ag/ultra
+JUPITER_API_KEY=
 BINANCE_API_URL=https://api.binance.com
 
 # Solana Configuration
@@ -321,9 +323,9 @@ if port_in_use 8081; then
     echo -e "${GREEN}✅ Cleaned port 8081${NC}"
 fi
 
-if port_in_use 3001; then
-    kill_port 3001
-    echo -e "${GREEN}✅ Cleaned port 3001${NC}"
+if port_in_use 3003; then
+    kill_port 3003
+    echo -e "${GREEN}✅ Cleaned port 3003${NC}"
 fi
 
 if port_in_use 3000; then
@@ -367,7 +369,7 @@ echo -e "${BLUE}Step 8: Starting Services${NC}"
 echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo ""
 
-# Start Linera service in background (linCasino pattern with --with-wallet 1)
+# Start Linera service in background (--with-wallet 1)
 echo -e "${YELLOW}Starting Linera service on port $LINERA_SERVICE_PORT...${NC}"
 nohup linera --max-pending-message-bundles $LINERA_MAX_PENDING_MESSAGES --with-wallet 1 service --port $LINERA_SERVICE_PORT > linera-service.log 2>&1 &
 LINERA_PID=$!
@@ -383,7 +385,7 @@ else
 fi
 
 # Start backend in background
-echo -e "${YELLOW}Starting backend on port 3001...${NC}"
+echo -e "${YELLOW}Starting backend on port $BACKEND_PORT...${NC}"
 SCRIPT_DIR="$(pwd)"
 touch /tmp/backend.log
 cd backend
@@ -433,7 +435,7 @@ echo -e "   Network:        ${YELLOW}Testnet Conway${NC}"
 echo ""
 echo -e "${CYAN}🌐 Access Points:${NC}"
 echo -e "   Frontend:       ${GREEN}http://localhost:3000${NC}"
-echo -e "   Backend API:    ${GREEN}http://localhost:3001${NC}"
+echo -e "   Backend API:    ${GREEN}http://localhost:$BACKEND_PORT${NC}"
 echo -e "   Linera GraphQL: ${GREEN}http://localhost:8081${NC}"
 echo ""
 echo -e "${CYAN}📊 Service Status:${NC}"

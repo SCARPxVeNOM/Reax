@@ -18,7 +18,7 @@ export function useLinera() {
     async function connect() {
       try {
         const lineraClient = getLineraClient();
-        
+
         if (mounted) {
           setClient(lineraClient);
           setIsConnected(true);
@@ -54,12 +54,20 @@ export function useLineraEvents(callback: (event: any) => void) {
   useEffect(() => {
     if (!isConnected || !client) return;
 
-    const unsubscribe = client.subscribeToEvents((event) => {
-      callback(event);
-    });
+    let unsubscribe: (() => void) | null = null;
+
+    const setup = async () => {
+      unsubscribe = await client.subscribeToEvents((event) => {
+        callback(event);
+      });
+    };
+
+    setup();
 
     return () => {
-      unsubscribe();
+      if (unsubscribe) {
+        unsubscribe();
+      }
     };
   }, [isConnected, client, callback]);
 }
@@ -93,15 +101,20 @@ export function useSignals(limit: number = 50, offset: number = 0) {
 
     // Subscribe to real-time updates
     if (isConnected && client) {
-      const unsubscribe = client.subscribeToEvents((event) => {
-        if (event.type === 'update') {
-          // Refresh signals when updates come in
-          fetchSignals();
-        }
-      });
+      let unsubscribe: (() => void) | null = null;
+
+      const setup = async () => {
+        unsubscribe = await client.subscribeToEvents((event) => {
+          if (event.type === 'update') {
+            fetchSignals();
+          }
+        });
+      };
+
+      setup();
 
       return () => {
-        unsubscribe();
+        if (unsubscribe) unsubscribe();
       };
     }
   }, [isConnected, client, fetchSignals]);
@@ -138,14 +151,20 @@ export function useStrategies(owner?: string, limit: number = 50, offset: number
 
     // Subscribe to real-time updates
     if (isConnected && client) {
-      const unsubscribe = client.subscribeToEvents((event) => {
-        if (event.type === 'update') {
-          fetchStrategies();
-        }
-      });
+      let unsubscribe: (() => void) | null = null;
+
+      const setup = async () => {
+        unsubscribe = await client.subscribeToEvents((event) => {
+          if (event.type === 'update') {
+            fetchStrategies();
+          }
+        });
+      };
+
+      setup();
 
       return () => {
-        unsubscribe();
+        if (unsubscribe) unsubscribe();
       };
     }
   }, [isConnected, client, fetchStrategies]);
@@ -182,14 +201,20 @@ export function useOrders(strategyId?: number, status?: string, limit: number = 
 
     // Subscribe to real-time updates
     if (isConnected && client) {
-      const unsubscribe = client.subscribeToEvents((event) => {
-        if (event.type === 'update') {
-          fetchOrders();
-        }
-      });
+      let unsubscribe: (() => void) | null = null;
+
+      const setup = async () => {
+        unsubscribe = await client.subscribeToEvents((event) => {
+          if (event.type === 'update') {
+            fetchOrders();
+          }
+        });
+      };
+
+      setup();
 
       return () => {
-        unsubscribe();
+        if (unsubscribe) unsubscribe();
       };
     }
   }, [isConnected, client, fetchOrders]);
