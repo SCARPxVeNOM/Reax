@@ -6,7 +6,7 @@ use linera_sdk::{Contract, ContractRuntime};
 use linera_sdk::abi::WithContractAbi;
 use linera_sdk::views::RootView;
 use linera_sdk::linera_base_types::StreamName;
-use abi::{LineraTradeAbi, Event, Operation, Order, OrderStatus, Signal, Strategy, DEXOrder, StrategyFollower, TradeReplication, ReplicationStatus, SafetyConfig, ValidatedOrder, ValidationStatus, PredictionMarket, StrategyMarketLink, StrategyVersion};
+use abi::{LineraTradeAbi, Event, Operation, Order, OrderStatus, Signal, Strategy, DEXOrder, StrategyFollower, TradeReplication, ReplicationStatus, SafetyConfig, ValidatedOrder, ValidationStatus, PredictionMarket, StrategyMarketLink, StrategyVersion, MicrochainProfile};
 use self::state::LineraTradeState;
 
 linera_sdk::contract!(LineraTradeContract);
@@ -161,6 +161,10 @@ impl Contract for LineraTradeContract {
             }
             Operation::CancelConditionalOrder { order_id } => {
                 self.cancel_conditional_order(order_id).await;
+                0
+            }
+            Operation::CreateMicrochainProfile { name, wallet, chains, visibility } => {
+                self.create_microchain_profile(name, wallet, chains, visibility).await;
                 0
             }
         }
@@ -660,5 +664,34 @@ impl LineraTradeContract {
             let stream_name = StreamName::from(bcs::to_bytes(&"conditional_order_cancelled").unwrap());
             self.runtime.emit(stream_name, &event);
         }
+    }
+
+    async fn create_microchain_profile(&mut self, name: String, wallet: String, chains: Vec<String>, visibility: String) {
+        // Create profile with performance tracking fields
+        let profile = MicrochainProfile {
+            id: wallet.clone(), // Use wallet as ID
+            name: name.clone(),
+            wallets: vec![wallet.clone()],
+            preferred_chains: chains,
+            visibility,
+            created_at: self.runtime.system_time().micros(),
+            // Initialize performance tracking
+            total_trades: 0,
+            winning_trades: 0,
+            total_volume: 0,
+            total_pnl: 0,
+        };
+
+        // Store profile
+        let _ = self.state.microchain_profiles.insert(&wallet, profile);
+
+        // Increment microchain counter for analytics
+        let current_count = *self.state.microchain_counter.get();
+        self.state.microchain_counter.set(current_count + 1);
+
+        // Emit event
+        let event = Event::MicrochainProfileCreated { wallet, name };
+        let stream_name = StreamName::from(bcs::to_bytes(&"microchain_profile_created").unwrap());
+        self.runtime.emit(stream_name, &event);
     }
 }

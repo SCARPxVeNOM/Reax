@@ -1,12 +1,8 @@
 /**
- * Linera Client via GraphQL (Direct Approach)
+ * Linera Client via Backend Proxy
  * 
- * Based on official Linera documentation:
- * - Linera service runs on port 8080
- * - Provides GraphQL API at http://localhost:8080
- * - Can be queried directly via graphql-request
- * 
- * This is the CORRECT approach for production until @linera/client WASM package is published.
+ * Routes requests through the backend server to bypass CORS issues.
+ * The backend proxies requests to the Linera service running on port 8081.
  * 
  * Reference: https://linera.dev/developers/frontend/interactivity.html
  */
@@ -14,30 +10,80 @@
 import { GraphQLClient } from 'graphql-request';
 
 export class LineraGraphQLClient {
-  private client: GraphQLClient;
+  private proxyClient: GraphQLClient;
+  private nodeProxyClient: GraphQLClient;
   private applicationId: string;
+  private chainId: string;
+  private backendUrl: string;
 
   constructor() {
     this.applicationId = process.env.NEXT_PUBLIC_LINERA_APP_ID || '';
-    const serviceUrl = process.env.NEXT_PUBLIC_LINERA_SERVICE_URL || 'http://localhost:8080';
+    this.chainId = process.env.NEXT_PUBLIC_LINERA_CHAIN_ID || this.applicationId; // Default to appId if chainId not set
+    this.backendUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3003';
 
-    this.client = new GraphQLClient(serviceUrl, {
+    // Use backend proxy for app-specific Linera requests
+    this.proxyClient = new GraphQLClient(`${this.backendUrl}/api/linera/app`, {
       headers: {
         'Content-Type': 'application/json',
       },
     });
+
+    // Use backend proxy for node-level operations (executeOperation, etc.)
+    this.nodeProxyClient = new GraphQLClient(`${this.backendUrl}/api/linera/node`, {
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+
+    console.log('Linera GraphQL client initialized (via proxy):', {
+      backendUrl: this.backendUrl,
+      appId: this.applicationId ? this.applicationId.substring(0, 16) + '...' : 'NOT SET',
+      chainId: this.chainId ? this.chainId.substring(0, 16) + '...' : 'NOT SET'
+    });
   }
 
   /**
-   * Raw GraphQL request method
+   * Raw GraphQL request method - uses backend app proxy
    */
   async request<T = any>(document: string, variables?: Record<string, any>): Promise<T> {
-    return this.client.request<T>(document, variables);
+    return this.proxyClient.request<T>(document, variables);
+  }
+
+  /**
+   * Node-level GraphQL request - for executeOperation mutations
+   */
+  async nodeRequest<T = any>(document: string, variables?: Record<string, any>): Promise<T> {
+    return this.nodeProxyClient.request<T>(document, variables);
+  }
+
+  /**
+   * Get the application ID
+   */
+  getApplicationId(): string {
+    return this.applicationId;
+  }
+
+  /**
+   * Get the chain ID
+   */
+  getChainId(): string {
+    return this.chainId;
+  }
+
+  /**
+   * Check Linera service status via backend
+   */
+  async checkStatus(): Promise<{ status: string; error?: string }> {
+    try {
+      const response = await fetch(`${this.backendUrl}/api/linera/status`);
+      return await response.json();
+    } catch (error) {
+      return { status: 'disconnected', error: 'Backend unreachable' };
+    }
   }
 
   /**
    * Submit a signal to Linera chain
-   * This creates a mutation that proposes a new block
    */
   async submitSignal(signal: {
     influencer: string;
@@ -49,18 +95,21 @@ export class LineraGraphQLClient {
     tweet_url: string;
   }): Promise<number> {
     const mutation = `
-      mutation SubmitSignal {
-        executeOperation(
-          applicationId: "${this.applicationId}",
-          operation: ${JSON.stringify({ SubmitSignal: { signal } })}
-        ) {
-          __typename
-        }
+      mutation {
+        submitSignal(signal: {
+          influencer: "${signal.influencer}",
+          token: "${signal.token}",
+          contract: "${signal.contract}",
+          sentiment: "${signal.sentiment}",
+          confidence: ${signal.confidence},
+          timestamp: ${signal.timestamp},
+          tweetUrl: "${signal.tweet_url}"
+        })
       }
     `;
 
-    const response = await this.client.request<{ executeOperation: any }>(mutation);
-    return 1; // Return signal ID - would need proper response parsing
+    await this.proxyClient.request(mutation);
+    return 1;
   }
 
   /**
@@ -74,18 +123,19 @@ export class LineraGraphQLClient {
     created_at: number;
   }): Promise<number> {
     const mutation = `
-      mutation CreateStrategy {
-        executeOperation(
-          applicationId: "${this.applicationId}",
-          operation: ${JSON.stringify({ CreateStrategy: { strategy } })}
-        ) {
-          __typename
-        }
+      mutation {
+        createStrategy(strategy: {
+          owner: "${strategy.owner}",
+          name: "${strategy.name}",
+          strategyType: ${JSON.stringify(strategy.strategy_type)},
+          active: ${strategy.active},
+          createdAt: ${strategy.created_at}
+        })
       }
     `;
 
-    const response = await this.client.request(mutation);
-    return 1; // Would need proper response parsing
+    await this.proxyClient.request(mutation);
+    return 1;
   }
 
   /**
@@ -93,15 +143,12 @@ export class LineraGraphQLClient {
    */
   async activateStrategy(strategyId: number): Promise<void> {
     const mutation = `
-      mutation ActivateStrategy {
-        executeOperation(
-          applicationId: "${this.applicationId}",
-          operation: ${JSON.stringify({ ActivateStrategy: { strategy_id: strategyId } })}
-        )
+      mutation {
+        activateStrategy(strategyId: ${strategyId})
       }
     `;
 
-    await this.client.request(mutation);
+    await this.proxyClient.request(mutation);
   }
 
   /**
@@ -109,15 +156,12 @@ export class LineraGraphQLClient {
    */
   async deactivateStrategy(strategyId: number): Promise<void> {
     const mutation = `
-      mutation DeactivateStrategy {
-        executeOperation(
-          applicationId: "${this.applicationId}",
-          operation: ${JSON.stringify({ DeactivateStrategy: { strategy_id: strategyId } })}
-        )
+      mutation {
+        deactivateStrategy(strategyId: ${strategyId})
       }
     `;
 
-    await this.client.request(mutation);
+    await this.proxyClient.request(mutation);
   }
 
   /**
@@ -125,17 +169,18 @@ export class LineraGraphQLClient {
    */
   async getSignals(limit: number = 50, offset: number = 0): Promise<any[]> {
     const query = `
-      query GetSignals {
-        queryApplication(
-          applicationId: "${this.applicationId}",
-          query: ${JSON.stringify({ GetSignals: { limit, offset } })}
-        )
+      query {
+        getSignals(limit: ${limit}, offset: ${offset})
       }
     `;
 
-    const response = await this.client.request<{ queryApplication: string }>(query);
-    const appResult = JSON.parse(response.queryApplication);
-    return appResult.Signals || [];
+    try {
+      const response = await this.proxyClient.request<{ getSignals: any[] }>(query);
+      return response.getSignals || [];
+    } catch (error) {
+      console.error('Failed to get signals:', error);
+      return [];
+    }
   }
 
   /**
@@ -146,20 +191,20 @@ export class LineraGraphQLClient {
     limit: number = 50,
     offset: number = 0
   ): Promise<any[]> {
+    const ownerArg = owner ? `owner: "${owner}",` : '';
     const query = `
-      query GetStrategies {
-        queryApplication(
-          applicationId: "${this.applicationId}",
-          query: ${JSON.stringify({
-      GetStrategies: { owner, limit, offset }
-    })}
-        )
+      query {
+        getStrategies(${ownerArg} limit: ${limit}, offset: ${offset})
       }
     `;
 
-    const response = await this.client.request<{ queryApplication: string }>(query);
-    const appResult = JSON.parse(response.queryApplication);
-    return appResult.Strategies || [];
+    try {
+      const response = await this.proxyClient.request<{ getStrategies: any[] }>(query);
+      return response.getStrategies || [];
+    } catch (error) {
+      console.error('Failed to get strategies:', error);
+      return [];
+    }
   }
 
   /**
@@ -171,40 +216,32 @@ export class LineraGraphQLClient {
     limit: number = 50,
     offset: number = 0
   ): Promise<any[]> {
+    const strategyArg = strategyId ? `strategyId: ${strategyId},` : '';
+    const statusArg = status ? `status: "${status}",` : '';
     const query = `
-      query GetOrders {
-        queryApplication(
-          applicationId: "${this.applicationId}",
-          query: ${JSON.stringify({
-      GetOrders: {
-        strategy_id: strategyId,
-        status,
-        limit,
-        offset
-      }
-    })}
-        )
+      query {
+        getOrders(${strategyArg} ${statusArg} limit: ${limit}, offset: ${offset})
       }
     `;
 
-    const response = await this.client.request<{ queryApplication: string }>(query);
-    const appResult = JSON.parse(response.queryApplication);
-    return appResult.Orders || [];
+    try {
+      const response = await this.proxyClient.request<{ getOrders: any[] }>(query);
+      return response.getOrders || [];
+    } catch (error) {
+      console.error('Failed to get orders:', error);
+      return [];
+    }
   }
 
   /**
    * Subscribe to real-time events
-   * Note: For real-time, you'd need WebSocket or polling
-   * Linera service doesn't expose WebSocket in this version
    */
   async subscribeToEvents(callback: (event: any) => void): Promise<() => void> {
-    // Polling approach - query every 1 second
     let intervalId: NodeJS.Timeout;
 
     const poll = async () => {
       try {
         const signals = await this.getSignals(1, 0);
-        // Emit new signals
         signals.forEach(signal => callback({ type: 'SignalReceived', data: signal }));
       } catch (error) {
         console.error('Polling error:', error);
@@ -212,7 +249,7 @@ export class LineraGraphQLClient {
     };
 
     intervalId = setInterval(poll, 1000);
-    poll(); // Initial poll
+    poll();
 
     return () => clearInterval(intervalId);
   }
@@ -221,7 +258,6 @@ export class LineraGraphQLClient {
    * Disconnect
    */
   async disconnect(): Promise<void> {
-    // No persistent connection to close
     console.log('Linera client disconnected');
   }
 }
@@ -238,4 +274,3 @@ export function getLineraClient(): LineraGraphQLClient {
 
 // Export singleton for direct use
 export const lineraClient = getLineraClient();
-

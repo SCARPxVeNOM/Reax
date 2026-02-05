@@ -4,7 +4,7 @@ mod state;
 
 use linera_sdk::{Service, ServiceRuntime};
 use linera_sdk::abi::WithServiceAbi;
-use abi::{LineraTradeAbi, Order, Signal, Strategy, Query, QueryResponse, SafetyConfig, ValidatedOrder, PredictionMarket, StrategyMarketLink, StrategyVersion};
+use abi::{LineraTradeAbi, Order, Signal, Strategy, Query, QueryResponse, SafetyConfig, ValidatedOrder, PredictionMarket, StrategyMarketLink, StrategyVersion, MicrochainProfile, NetworkAnalytics, LeaderboardEntry};
 use self::state::LineraTradeState;
 
 linera_sdk::service!(LineraTradeService);
@@ -66,6 +66,12 @@ impl Service for LineraTradeService {
             // Strategy Enhancement Queries (Phase 2)
             Query::GetStrategyVersions { strategy_id } => {
                 QueryResponse::StrategyVersions(self.get_strategy_versions(strategy_id).await)
+            }
+            Query::GetMicrochainProfile { wallet } => {
+                QueryResponse::MicrochainProfile(self.get_microchain_profile(wallet).await)
+            }
+            Query::GetNetworkAnalytics => {
+                QueryResponse::NetworkAnalytics(self.get_network_analytics().await)
             }
         }
     }
@@ -242,5 +248,32 @@ impl LineraTradeService {
         }
         
         versions
+    }
+
+    async fn get_microchain_profile(&self, wallet: String) -> Option<MicrochainProfile> {
+        self.state.microchain_profiles.get(&wallet).await.ok().flatten()
+    }
+
+    async fn get_network_analytics(&self) -> NetworkAnalytics {
+        let total_microchains = *self.state.microchain_counter.get();
+        let total_strategies = *self.state.strategy_counter.get();
+        let total_volume = *self.state.total_network_volume.get();
+        let active_trades = *self.state.order_counter.get();
+
+        // Build leaderboard from top microchain profiles
+        // This is a simplified implementation - in production you'd want indexed queries
+        let mut leaderboard = Vec::new();
+        
+        // Iterate through microchain profiles to build leaderboard
+        // Note: MapView doesn't have direct iteration, so we collect based on known wallets
+        // For now, return empty leaderboard - real implementation would need indexing
+        
+        NetworkAnalytics {
+            total_microchains,
+            total_strategies,
+            total_volume,
+            active_trades,
+            leaderboard,
+        }
     }
 }

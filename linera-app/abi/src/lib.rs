@@ -20,6 +20,44 @@ pub struct Signal {
     pub platform: Option<String>, // "DEX" or "CEX"
 }
 
+/// Microchain Profile
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct MicrochainProfile {
+    pub id: String,
+    pub name: String,
+    pub wallets: Vec<String>,
+    pub preferred_chains: Vec<String>,
+    pub visibility: String,
+    pub created_at: u64,
+    // Performance tracking for leaderboard
+    pub total_trades: u64,
+    pub winning_trades: u64,
+    pub total_volume: u64,
+    pub total_pnl: i64, // Can be negative
+}
+
+/// Leaderboard entry for network analytics
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct LeaderboardEntry {
+    pub id: String,
+    pub name: String,
+    pub win_rate: f64,
+    pub roi: f64,
+    pub trades: u64,
+    pub volume: u64,
+    pub chain: String,
+}
+
+/// Network-wide analytics
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct NetworkAnalytics {
+    pub total_microchains: u64,
+    pub total_strategies: u64,
+    pub total_volume: u64,
+    pub active_trades: u64,
+    pub leaderboard: Vec<LeaderboardEntry>,
+}
+
 // ============================================
 // PHASE 2: STRATEGY ENHANCEMENTS
 // ============================================
@@ -347,6 +385,13 @@ pub enum Operation {
     CheckConditionalOrders,
     TriggerConditionalOrder { order_id: u64 },
     CancelConditionalOrder { order_id: u64 },
+    // Microchain Profile Operations
+    CreateMicrochainProfile { 
+        name: String,
+        wallet: String,
+        chains: Vec<String>,
+        visibility: String,
+    },
 }
 
 /// Events emitted by the application
@@ -407,6 +452,8 @@ pub enum Event {
     MultiHopOrderCreated { order_id: u64, hop_count: usize },
     ConditionalOrderTriggered { order_id: u64 },
     ConditionalOrderCancelled { order_id: u64 },
+    // Microchain Events
+    MicrochainProfileCreated { wallet: String, name: String },
 }
 
 /// Query operations for read-only access
@@ -436,6 +483,10 @@ pub enum Query {
     GetStrategyMarketLinks { strategy_id: u64 },
     // Strategy Enhancement Queries (Phase 2)
     GetStrategyVersions { strategy_id: u64 },
+    // Microchain Queries
+    GetMicrochainProfile { wallet: String },
+    // Network Analytics Query
+    GetNetworkAnalytics,
 }
 
 /// Query response types
@@ -456,6 +507,10 @@ pub enum QueryResponse {
     StrategyMarketLinks(Vec<StrategyMarketLink>),
     // Strategy Enhancement Responses (Phase 2)
     StrategyVersions(Vec<StrategyVersion>),
+    // Microchain Responses
+    MicrochainProfile(Option<MicrochainProfile>),
+    // Network Analytics Response
+    NetworkAnalytics(NetworkAnalytics),
 }
 
 use linera_sdk::abi::{ContractAbi, ServiceAbi};

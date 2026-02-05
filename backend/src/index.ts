@@ -14,6 +14,7 @@ import strategyRoutes from './routes/strategies';
 import pineScriptRoutes from './routes/pinescript';
 import visualStrategyRoutes from './routes/visual-strategy';
 import strategyMicrochainRoutes from './routes/strategy-microchain';
+import lineraProxyRoutes from './routes/linera-proxy';
 
 import { WebSocketServer } from './services/websocket-server';
 
@@ -42,6 +43,7 @@ app.use('/api/strategies', strategyRoutes);
 app.use('/api/pinescript', pineScriptRoutes);
 app.use('/api/visual-strategy', visualStrategyRoutes);
 app.use('/api/strategy-microchain', strategyMicrochainRoutes);
+app.use('/api/linera', lineraProxyRoutes);
 
 // Test route to verify routing works
 app.get('/test', (req, res) => {

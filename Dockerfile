@@ -69,13 +69,15 @@ COPY package*.json ./
 COPY backend/package*.json ./backend/
 COPY frontend/package*.json ./frontend/
 
-# Install dependencies
-RUN npm install 2>/dev/null || true
+# Install dependencies (including devDependencies for tailwind/postcss)
 RUN cd backend && npm install
 RUN cd frontend && npm install
 
 # Copy project files
 COPY . .
+
+# Ensure CSS tools are available and rebuild styles
+RUN cd frontend && npm run build || echo "Build warning - will use dev mode"
 
 # Create logs directory
 RUN mkdir -p /build/logs

@@ -1,5 +1,5 @@
 use linera_sdk::views::{MapView, RegisterView, RootView, ViewStorageContext};
-use abi::{Signal, Strategy, Order, DEXOrder, StrategyFollower, TradeReplication, SafetyConfig, ValidatedOrder, PredictionMarket, StrategyMarketLink, StrategyVersion};
+use abi::{Signal, Strategy, Order, DEXOrder, StrategyFollower, TradeReplication, SafetyConfig, ValidatedOrder, PredictionMarket, StrategyMarketLink, StrategyVersion, MicrochainProfile};
 
 /// Application state
 #[derive(RootView)]
@@ -24,11 +24,16 @@ pub struct LineraTradeState {
     // Strategy Enhancement state (Phase 2)
     pub strategy_versions: MapView<String, StrategyVersion>, // "strategy_id:version" -> snapshot
     
+    // Microchain Profiles
+    pub microchain_profiles: MapView<String, MicrochainProfile>, // wallet -> profile
+
     // Counters
     pub signal_counter: RegisterView<u64>,
     pub strategy_counter: RegisterView<u64>,
     pub order_counter: RegisterView<u64>,
     pub dex_order_counter: RegisterView<u64>,
     pub market_counter: RegisterView<u64>,
+    pub microchain_counter: RegisterView<u64>,
+    pub total_network_volume: RegisterView<u64>,
 }
 

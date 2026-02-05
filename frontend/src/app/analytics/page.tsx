@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useLineraContext } from '@/components/LineraProvider';
+import { useMicrochain } from '@/components/MicrochainContext';
 import { microchainService } from '@/lib/microchain-service';
 
 interface LeaderboardEntry {
@@ -23,37 +24,81 @@ interface NetworkStats {
 
 export default function AnalyticsPage() {
   const { isConnected } = useLineraContext();
+  const { allProfiles, allStrategies, allTrades } = useMicrochain();
   const [sortBy, setSortBy] = useState<'roi' | 'winRate' | 'trades'>('roi');
   const [isLoading, setIsLoading] = useState(true);
   const [analytics, setAnalytics] = useState<NetworkStats | null>(null);
 
-  // Fetch analytics from Linera
+  // Build analytics from context data (all microchains)
   useEffect(() => {
     async function fetchAnalytics() {
       setIsLoading(true);
       try {
-        const data = await microchainService.getNetworkAnalytics();
-        // Remove chain field from leaderboard entries
-        const cleanedData = {
-          ...data,
-          leaderboard: data.leaderboard.map((entry: any) => ({
-            id: entry.id,
-            name: entry.name,
-            winRate: entry.winRate,
-            roi: entry.roi,
-            trades: entry.trades,
-            volume: entry.volume,
-          })),
-        };
-        setAnalytics(cleanedData);
+        // First try to build from local context data
+        if (allProfiles.length > 0 || allStrategies.length > 0 || allTrades.length > 0) {
+          // Calculate total volume from trades
+          const totalVolumeNum = allTrades.reduce((sum, t) => sum + (t.amount * t.price || 0), 0);
+
+          // Build leaderboard from profiles
+          const leaderboard: LeaderboardEntry[] = allProfiles.map((profile, idx) => {
+            const profileTrades = allTrades.filter(t => t.microchainId === profile.id || t.microchainName === profile.name);
+            const wins = profileTrades.filter(t => t.pnl > 0).length;
+            const totalPnl = profileTrades.reduce((sum, t) => sum + t.pnl, 0);
+
+            return {
+              id: profile.id || `profile_${idx}`,
+              name: profile.name,
+              winRate: profileTrades.length > 0 ? Math.round((wins / profileTrades.length) * 100) : 0,
+              roi: Math.round(totalPnl * 10) / 10,
+              trades: profileTrades.length,
+              volume: `$${(profileTrades.reduce((sum, t) => sum + t.amount * t.price, 0) / 1000).toFixed(1)}K`,
+            };
+          });
+
+          setAnalytics({
+            totalMicrochains: Math.max(allProfiles.length, 1),
+            totalStrategies: allStrategies.length,
+            totalVolume: `$${(totalVolumeNum / 1000).toFixed(1)}K`,
+            activeTrades: allTrades.filter(t => t.status === 'filled').length,
+            leaderboard: leaderboard.length > 0 ? leaderboard : await getFallbackLeaderboard(),
+          });
+        } else {
+          // Fall back to service
+          const data = await microchainService.getNetworkAnalytics();
+          const cleanedData = {
+            ...data,
+            leaderboard: data.leaderboard.map((entry: any) => ({
+              id: entry.id,
+              name: entry.name,
+              winRate: entry.winRate,
+              roi: entry.roi,
+              trades: entry.trades,
+              volume: entry.volume,
+            })),
+          };
+          setAnalytics(cleanedData);
+        }
       } catch (error) {
         console.error('Failed to fetch analytics:', error);
       } finally {
         setIsLoading(false);
       }
     }
+
+    async function getFallbackLeaderboard(): Promise<LeaderboardEntry[]> {
+      const data = await microchainService.getNetworkAnalytics();
+      return data.leaderboard.map((entry: any) => ({
+        id: entry.id,
+        name: entry.name,
+        winRate: entry.winRate,
+        roi: entry.roi,
+        trades: entry.trades,
+        volume: entry.volume,
+      }));
+    }
+
     fetchAnalytics();
-  }, []);
+  }, [allProfiles, allStrategies, allTrades]);
 
   if (isLoading) {
     return (

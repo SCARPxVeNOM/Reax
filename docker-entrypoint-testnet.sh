@@ -94,13 +94,33 @@ cargo build --release --target wasm32-unknown-unknown 2>&1 | tail -10
 echo ""
 echo "🚀 Publishing ReaX microchain application..."
 APP_OUTPUT="$(linera --wait-for-outgoing-messages project publish-and-create . reax-microchain 2>&1)" || true
-APP_ID="$(echo "${APP_OUTPUT}" | grep -oE '[a-f0-9]{64}' | head -n 1 || true)"
+echo "${APP_OUTPUT}" > /build/logs/linera-deploy.log
+
+# Try to extract full application ID (format varies by Linera version)
+# First try: Look for "Application ID:" pattern
+APP_ID="$(echo "${APP_OUTPUT}" | grep -oP '(?<=Application ID: )[^\s]+' || true)"
+
+# Fallback: Look for application ID in standard format (longer than chain ID)
+if [ -z "${APP_ID}" ]; then
+  # Application IDs typically have format: <bytecode_id><creation_chain><creation_height>...
+  APP_ID="$(echo "${APP_OUTPUT}" | grep -oE '[a-f0-9]{64,}' | tail -n 1 || true)"
+fi
+
+# Fallback: Check if app was already deployed by querying the chain
+if [ -z "${APP_ID}" ]; then
+  echo "⚠️  Could not extract APP_ID from output. Checking for existing applications..."
+  APPS_OUTPUT="$(linera wallet show 2>/dev/null || true)"
+  echo "${APPS_OUTPUT}" >> /build/logs/linera-deploy.log
+  APP_ID="$(echo "${APPS_OUTPUT}" | grep -oP '(?<=Application ID: )[^\s]+' | head -n 1 || true)"
+fi
+
 cd /build
 
 if [ -z "${APP_ID}" ]; then
-  echo "⚠️  Could not determine LINERA_APP_ID (may already exist)"
-  echo "   Continuing without app ID..."
-  APP_ID="demo-app-id"
+  echo "⚠️  Could not determine LINERA_APP_ID"
+  echo "   Check /build/logs/linera-deploy.log for details"
+  echo "   Using chain ID as fallback (limited functionality)"
+  APP_ID="${CHAIN_ID:-demo-app-id}"
 fi
 
 echo "✅ Linera App ID: ${APP_ID}"

@@ -2,6 +2,7 @@
 
 import './globals.css';
 import { LineraProvider } from '@/components/LineraProvider';
+import { MicrochainProvider } from '@/components/MicrochainContext';
 import { Navigation } from '@/components/Navigation';
 
 export default function RootLayout({
@@ -18,10 +19,12 @@ export default function RootLayout({
       </head>
       <body>
         <LineraProvider>
-          <Navigation />
-          <main className="min-h-screen">
-            {children}
-          </main>
+          <MicrochainProvider>
+            <Navigation />
+            <main className="min-h-screen">
+              {children}
+            </main>
+          </MicrochainProvider>
         </LineraProvider>
       </body>
     </html>

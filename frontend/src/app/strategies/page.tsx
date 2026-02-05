@@ -2,6 +2,7 @@
 
 import { useState, useRef } from 'react';
 import { useLineraContext } from '@/components/LineraProvider';
+import { useMicrochain } from '@/components/MicrochainContext';
 import { microchainService } from '@/lib/microchain-service';
 import { GlassCard, GlowButton, GlassInput, GradientText } from '@/components/ui';
 import {
@@ -22,6 +23,7 @@ type CreationMethod = 'visual' | 'image' | 'pinescript';
 
 export default function StrategiesPage() {
   const { isConnected } = useLineraContext();
+  const { addStrategy, refreshStrategies } = useMicrochain();
   const [method, setMethod] = useState<CreationMethod>('visual');
   const [strategyName, setStrategyName] = useState('');
   const [pineCode, setPineCode] = useState('');
@@ -38,6 +40,7 @@ export default function StrategiesPage() {
   const [uploadedImage, setUploadedImage] = useState<string | null>(null);
   const [uploadedFileName, setUploadedFileName] = useState<string>('');
   const [isDragging, setIsDragging] = useState(false);
+  const [publishError, setPublishError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const methods = [
@@ -52,6 +55,7 @@ export default function StrategiesPage() {
     if (!strategyName) return;
 
     setIsPublishing(true);
+    setPublishError(null);
 
     try {
       const strategy = await microchainService.publishStrategy({
@@ -65,9 +69,17 @@ export default function StrategiesPage() {
       });
 
       console.log('Strategy published:', strategy);
+
+      // Add to context so it appears immediately on Social page
+      addStrategy(strategy);
+
+      // Refresh strategies in context
+      await refreshStrategies();
+
       setPublished(true);
     } catch (error) {
       console.error('Failed to publish strategy:', error);
+      setPublishError(error instanceof Error ? error.message : 'Failed to publish to Linera. Please check your connection.');
     } finally {
       setIsPublishing(false);
     }
@@ -517,6 +529,15 @@ if (shortCondition)
           <p className="text-sm text-gray-500 mt-4">
             Publishing will deploy this strategy to your Linera microchain for execution.
           </p>
+          {publishError && (
+            <div className="mt-4 p-4 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-sm max-w-md">
+              <div className="flex items-center gap-2">
+                <AlertTriangle size={16} />
+                <span className="font-bold">Publishing Failed</span>
+              </div>
+              <p className="mt-1 text-red-300/80">{publishError}</p>
+            </div>
+          )}
         </div>
 
       </div>

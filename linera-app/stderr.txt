@@ -1,0 +1,8 @@
+2026-02-04T16:43:17.311250Z  INFO linera::options: Using default wallet directory /home/aryan/.config/linera
+2026-02-04T16:43:17.801340Z  INFO linera::options: Using default wallet directory /home/aryan/.config/linera
+2026-02-04T16:43:17.829654Z  INFO linera::options: Using default wallet directory /home/aryan/.config/linera
+2026-02-04T16:43:17.861944Z  INFO linera: Creating application on chain 9acf097806777569f289714e07213455e6c1d0d8ac87ac47a1b13fd0619019f4
+    Finished `release` profile [optimized + debuginfo] target(s) in 25.97s
+2026-02-04T16:43:44.853298Z  INFO linera_client::client_context: Loading bytecode files
+2026-02-04T16:43:44.894807Z  INFO linera_client::client_context: Publishing module
+2026-02-04T16:43:46.587966Z ERROR linera: Error is chain client error: Local node operation failed: Blobs not found: [BlobId { blob_type: ChainDescription, hash: 8fd4233c5d03554f87d47a711cf70619727ca3d148353446cab81fb56922c9b7 }]

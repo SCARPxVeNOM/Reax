@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { useLineraContext } from '@/components/LineraProvider';
+import { useMicrochain } from '@/components/MicrochainContext';
 import { microchainService, Strategy } from '@/lib/microchain-service';
 import { LineraIntegrationService } from '@/lib/linera-integration';
 import { GlassCard, GlowButton, GradientText } from '@/components/ui';
@@ -12,6 +13,7 @@ const lineraService = new LineraIntegrationService();
 
 export default function SocialPage() {
   const { isConnected } = useLineraContext();
+  const { followStrategy, followedStrategies, allStrategies, refreshStrategies } = useMicrochain();
   const [strategies, setStrategies] = useState<Strategy[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [accepted, setAccepted] = useState<string[]>([]);
@@ -28,13 +30,23 @@ export default function SocialPage() {
     }));
   }, []);
 
-  // Fetch strategies from Linera
+  // Use ALL strategies from context (from all microchains)
   useEffect(() => {
     async function fetchStrategies() {
       setIsLoading(true);
       try {
-        const data = await microchainService.getPublicStrategies();
-        setStrategies(data);
+        // Use allStrategies from context (all microchains)
+        let data: Strategy[] = allStrategies || [];
+
+        // Fall back to service if context is empty
+        if (data.length === 0) {
+          data = await microchainService.getPublicStrategies();
+        }
+
+        // Filter out already followed strategies
+        const followedIds = new Set(followedStrategies.map(s => s.id));
+        const unfollowed = data.filter(s => !followedIds.has(s.id));
+        setStrategies(unfollowed);
       } catch (error) {
         console.error('Failed to fetch strategies:', error);
       } finally {
@@ -42,7 +54,7 @@ export default function SocialPage() {
       }
     }
     fetchStrategies();
-  }, []);
+  }, [followedStrategies, allStrategies]);
 
   const currentStrategy = strategies[currentIndex];
   // Show up to 4 cards in the stack for depth
@@ -61,9 +73,13 @@ export default function SocialPage() {
           allocationAmount: 100,
           riskLimitPercent: 10,
         });
+        // Persist to MicrochainContext
+        followStrategy(currentStrategy);
         setAccepted(prev => [...prev, currentStrategy.id]);
       } catch (error) {
-        console.error('Failed to follow strategy:', error);
+        console.error('Failed to follow strategy on Linera:', error);
+        // Still persist locally even if Linera fails
+        followStrategy(currentStrategy);
         setAccepted(prev => [...prev, currentStrategy.id]);
       } finally {
         setIsFollowing(false);

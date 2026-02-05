@@ -2,14 +2,16 @@
 
 import { useState, useEffect } from 'react';
 import { useLineraContext } from '@/components/LineraProvider';
+import { useMicrochain } from '@/components/MicrochainContext';
 import { microchainService, MicrochainProfile } from '@/lib/microchain-service';
 import { GlassCard, GlowButton, GlassInput, GradientText } from '@/components/ui';
-import { Wallet, Shield, Eye, Lock, Users, TrendingUp, Activity, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { Wallet, Shield, Eye, Lock, Users, TrendingUp, Activity, AlertTriangle, CheckCircle2, LogOut, Plus } from 'lucide-react';
 import Link from 'next/link';
 
 export default function MicrochainsPage() {
   const { isConnected } = useLineraContext();
-  const [profile, setProfile] = useState({
+  const { disconnectProfile, allProfiles, setProfile, setWalletAddress, profile: contextProfile } = useMicrochain();
+  const [profile, setLocalProfile] = useState({
     name: '',
     wallet: '',
     visibility: 'public' as 'public' | 'private' | 'gated',
@@ -32,6 +34,13 @@ export default function MicrochainsPage() {
     checkProfile();
   }, []);
 
+  // Sync with context profile
+  useEffect(() => {
+    if (contextProfile) {
+      setExistingProfile(contextProfile);
+    }
+  }, [contextProfile]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
@@ -47,6 +56,10 @@ export default function MicrochainsPage() {
       localStorage.setItem('microchain_wallet', profile.wallet);
       localStorage.setItem('microchain_profile', JSON.stringify(newProfile));
 
+      // Update context
+      setProfile(newProfile);
+      setWalletAddress(profile.wallet);
+
       setExistingProfile(newProfile);
       setCreated(true);
     } catch (error) {
@@ -54,6 +67,26 @@ export default function MicrochainsPage() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleDisconnect = () => {
+    // Just disconnect - no auto-connect
+    disconnectProfile();
+    setExistingProfile(null);
+    setCreated(false);
+    setLocalProfile({ name: '', wallet: '', visibility: 'public' });
+  };
+
+  // Connect to a specific profile (called from button)
+  const handleConnectProfile = (profileToConnect: MicrochainProfile) => {
+    setProfile(profileToConnect);
+    setWalletAddress(profileToConnect.wallets?.[0] || '');
+    setExistingProfile(profileToConnect);
+
+    // Persist connection
+    localStorage.setItem('microchain_profile', JSON.stringify(profileToConnect));
+    localStorage.setItem('connected_wallet', profileToConnect.wallets?.[0] || '');
+    localStorage.setItem('microchain_wallet', profileToConnect.wallets?.[0] || '');
   };
 
   // Show existing profile dashboard
@@ -71,22 +104,33 @@ export default function MicrochainsPage() {
         <div className="max-w-4xl mx-auto space-y-6">
           {/* Profile Header */}
           <GlassCard className="p-8">
-            <div className="flex items-center gap-6 mb-6">
-              <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-purple-500 to-blue-600 flex items-center justify-center text-4xl shadow-lg shadow-purple-500/20">
-                ⛓️
-              </div>
-              <div>
-                <h1 className="text-3xl font-bold text-white">{displayProfile.name}</h1>
-                <p className="text-gray-400">Linera Microchain Profile</p>
-                <div className="flex gap-2 mt-2">
-                  <span className={`px-3 py-1 rounded-full text-xs font-medium ${isConnected ? 'bg-green-500/20 text-green-400 border border-green-500/30' : 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30'}`}>
-                    {isConnected ? '🟢 Chain Synced' : '🟡 Demo Mode'}
-                  </span>
-                  <span className="px-3 py-1 rounded-full text-xs font-medium bg-white/5 text-gray-400 border border-white/10 capitalize">
-                    {displayProfile.visibility}
-                  </span>
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-6">
+                <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-purple-500 to-blue-600 flex items-center justify-center text-4xl shadow-lg shadow-purple-500/20">
+                  ⛓️
+                </div>
+                <div>
+                  <h1 className="text-3xl font-bold text-white">{displayProfile.name}</h1>
+                  <p className="text-gray-400">Linera Microchain Profile</p>
+                  <div className="flex gap-2 mt-2">
+                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${isConnected ? 'bg-green-500/20 text-green-400 border border-green-500/30' : 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30'}`}>
+                      {isConnected ? '🟢 Chain Synced' : '🟡 Demo Mode'}
+                    </span>
+                    <span className="px-3 py-1 rounded-full text-xs font-medium bg-white/5 text-gray-400 border border-white/10 capitalize">
+                      {displayProfile.visibility}
+                    </span>
+                  </div>
                 </div>
               </div>
+
+              {/* Disconnect Button */}
+              <button
+                onClick={handleDisconnect}
+                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 hover:bg-red-500/20 transition-colors"
+              >
+                <LogOut size={18} />
+                Disconnect
+              </button>
             </div>
 
             {/* Stats */}
@@ -117,6 +161,40 @@ export default function MicrochainsPage() {
               </div>
             ))}
           </GlassCard>
+
+          {/* Other Profiles - with Connect buttons */}
+          {allProfiles.length > 1 && (
+            <GlassCard className="p-6">
+              <h2 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                <Users size={20} className="text-purple-400" />
+                Other Microchains ({allProfiles.length - 1})
+              </h2>
+              <div className="space-y-2">
+                {allProfiles
+                  .filter(p => p.name !== displayProfile.name)
+                  .slice(0, 5)
+                  .map((p, i) => (
+                    <div key={i} className="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/5">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-sm">
+                          ⛓️
+                        </div>
+                        <div>
+                          <span className="text-white font-medium">{p.name}</span>
+                          <div className="text-xs text-gray-500">{p.strategiesCount || 0} strategies</div>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => handleConnectProfile(p)}
+                        className="px-3 py-1.5 rounded-lg text-xs font-medium bg-purple-500/20 text-purple-400 border border-purple-500/30 hover:bg-purple-500/30 transition-colors"
+                      >
+                        Connect
+                      </button>
+                    </div>
+                  ))}
+              </div>
+            </GlassCard>
+          )}
 
           {/* Infrastructure Info */}
           <GlassCard className="p-6 border-l-4 !border-l-purple-500">
@@ -229,8 +307,8 @@ export default function MicrochainsPage() {
                     type="button"
                     onClick={() => setProfile(prev => ({ ...prev, visibility: v as 'public' | 'private' | 'gated' }))}
                     className={`flex-1 py-3 px-4 rounded-xl border flex items-center justify-center gap-2 transition-all ${profile.visibility === v
-                        ? 'border-blue-500 bg-blue-500/10 text-blue-400 shadow-[0_0_15px_rgba(59,130,246,0.2)]'
-                        : 'border-white/5 bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white'
+                      ? 'border-blue-500 bg-blue-500/10 text-blue-400 shadow-[0_0_15px_rgba(59,130,246,0.2)]'
+                      : 'border-white/5 bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white'
                       }`}
                   >
                     {icon}

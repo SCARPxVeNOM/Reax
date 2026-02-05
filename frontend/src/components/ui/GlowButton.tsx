@@ -12,6 +12,7 @@ interface GlowButtonProps {
     disabled?: boolean;
     icon?: React.ReactNode;
     animated?: boolean;
+    type?: 'button' | 'submit' | 'reset';
 }
 
 export const GlowButton: React.FC<GlowButtonProps> = ({
@@ -23,6 +24,7 @@ export const GlowButton: React.FC<GlowButtonProps> = ({
     disabled,
     icon,
     animated = false,
+    type = 'button',
 }) => {
     const buttonRef = useRef<HTMLButtonElement>(null);
     const glowRef = useRef<HTMLDivElement>(null);
@@ -87,6 +89,7 @@ export const GlowButton: React.FC<GlowButtonProps> = ({
     return (
         <button
             ref={buttonRef}
+            type={type}
             onClick={onClick}
             disabled={disabled}
             className={`

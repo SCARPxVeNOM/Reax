@@ -1,7 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useLineraContext } from '@/components/LineraProvider';
+import { useMicrochain, Trade } from '@/components/MicrochainContext';
 import { LineraIntegrationService } from '@/lib/linera-integration';
 import { GlassCard, GlowButton, GlassInput, GradientText } from '@/components/ui';
 import {
@@ -10,44 +11,59 @@ import {
   History,
   TrendingUp,
   Activity,
-  AlertCircle
+  AlertCircle,
+  Zap,
+  Link as LinkIcon
 } from 'lucide-react';
-
-interface Trade {
-  id: number;
-  pair: string;
-  type: 'buy' | 'sell';
-  amount: number;
-  price: number;
-  pnl: number;
-  time: string;
-  status: 'filled' | 'pending';
-  txHash?: string;
-}
+import Link from 'next/link';
 
 const lineraService = new LineraIntegrationService();
 
 export default function TradingPage() {
   const { isConnected } = useLineraContext();
+  const {
+    profile,
+    profileTrades,
+    addTrade,
+    followedStrategies,
+    walletAddress
+  } = useMicrochain();
+
   const [selectedDex, setSelectedDex] = useState<'jupiter' | 'raydium'>('jupiter');
   const [tradeForm, setTradeForm] = useState({
     pair: 'SOL/USDC',
     amount: '',
     slippage: '0.5',
     type: 'buy' as 'buy' | 'sell',
+    strategyId: '' as string,
   });
   const [isExecuting, setIsExecuting] = useState(false);
-  const [trades, setTrades] = useState<Trade[]>([
-    { id: 1, pair: 'SOL/USDC', type: 'buy', amount: 10, price: 102.45, pnl: 5.2, time: '2 min ago', status: 'filled' },
-    { id: 2, pair: 'BTC/USDC', type: 'sell', amount: 0.05, price: 94850, pnl: -1.3, time: '15 min ago', status: 'filled' },
-    { id: 3, pair: 'ETH/USDC', type: 'buy', amount: 2, price: 3245.80, pnl: 12.5, time: '1 hour ago', status: 'filled' },
-  ]);
+
+  // Use trades from Microchain context
+  const trades = profileTrades;
 
   const handleExecuteTrade = async () => {
     if (!tradeForm.amount) return;
 
     setIsExecuting(true);
     const [inputToken, outputToken] = tradeForm.pair.split('/');
+
+    // Create trade object linked to Microchain profile
+    const newTrade: Trade = {
+      id: `trade_${Date.now()}`,
+      strategyId: tradeForm.strategyId || undefined,
+      pair: tradeForm.pair,
+      type: tradeForm.type,
+      amount: parseFloat(tradeForm.amount),
+      price: 0,
+      pnl: 0,
+      time: new Date().toLocaleTimeString(),
+      status: 'pending',
+      microchainId: profile?.id || walletAddress || 'demo',
+    };
+
+    // Add to context immediately (shows as pending)
+    addTrade(newTrade);
 
     try {
       // Create DEX order via Linera
@@ -59,46 +75,43 @@ export default function TradingPage() {
         slippageBps: parseInt(tradeForm.slippage) * 100,
       });
 
-      // Add pending trade to history
-      const newTrade: Trade = {
-        id: orderId || Date.now(),
-        pair: tradeForm.pair,
-        type: tradeForm.type,
-        amount: parseFloat(tradeForm.amount),
-        price: 0,
-        pnl: 0,
-        time: 'Just now',
-        status: 'pending',
-      };
-      setTrades(prev => [newTrade, ...prev]);
-
       // Execute the order
       const result = await lineraService.executeDEXOrder(orderId);
 
-      // Update trade status
-      setTrades(prev => prev.map(t =>
-        t.id === orderId
-          ? { ...t, status: 'filled' as const, txHash: result.txHash, price: 100 + Math.random() * 10 }
-          : t
-      ));
+      // Add filled trade to history via context
+      const filledTrade: Trade = {
+        id: `trade_${orderId || Date.now()}`,
+        strategyId: tradeForm.strategyId || undefined,
+        pair: tradeForm.pair,
+        type: tradeForm.type,
+        amount: parseFloat(tradeForm.amount),
+        price: 100 + Math.random() * 10,
+        pnl: Math.random() * 10 - 2,
+        time: new Date().toLocaleTimeString(),
+        status: 'filled',
+        txHash: result.txHash,
+        microchainId: profile?.id || walletAddress || 'demo',
+      };
+      addTrade(filledTrade);
 
       // Clear form
       setTradeForm(prev => ({ ...prev, amount: '' }));
     } catch (error) {
       console.error('Trade execution failed:', error);
-      // In demo mode, still show the trade as executed
-      const newTrade: Trade = {
-        id: Date.now(),
+      // Add failed trade
+      const failedTrade: Trade = {
+        id: `trade_${Date.now()}`,
         pair: tradeForm.pair,
         type: tradeForm.type,
         amount: parseFloat(tradeForm.amount),
-        price: 100 + Math.random() * 10,
+        price: 0,
         pnl: 0,
-        time: 'Just now',
-        status: 'filled',
+        time: new Date().toLocaleTimeString(),
+        status: 'failed',
+        microchainId: profile?.id || walletAddress || 'demo',
       };
-      setTrades(prev => [newTrade, ...prev]);
-      setTradeForm(prev => ({ ...prev, amount: '' }));
+      addTrade(failedTrade);
+      alert(`Trade failed: ${error instanceof Error ? error.message : 'Chain unavailable'}`);
     } finally {
       setIsExecuting(false);
     }
@@ -119,6 +132,22 @@ export default function TradingPage() {
           </div>
 
           <div className="flex gap-4">
+            {/* Microchain Profile Badge */}
+            {profile && (
+              <Link href="/microchains" className="glass px-4 py-2 rounded-xl flex items-center gap-2 text-sm text-gray-400 hover:bg-white/10 transition-colors">
+                <LinkIcon className="w-4 h-4 text-blue-400" />
+                <span className="text-blue-400 font-medium">{profile.name}</span>
+              </Link>
+            )}
+
+            {/* Followed Strategies Badge */}
+            {followedStrategies.length > 0 && (
+              <div className="glass px-4 py-2 rounded-xl flex items-center gap-2 text-sm text-gray-400">
+                <Zap className="w-4 h-4 text-purple-400" />
+                <span>{followedStrategies.length} Strategies</span>
+              </div>
+            )}
+
             <div className="glass px-4 py-2 rounded-xl flex items-center gap-2 text-sm text-gray-400">
               <Wallet className="w-4 h-4" />
               <span>Balance:</span>
@@ -132,6 +161,35 @@ export default function TradingPage() {
           <GlassCard className="p-4 border-yellow-500/20 bg-yellow-500/5 flex items-center gap-3">
             <AlertCircle className="text-yellow-500" />
             <span className="text-yellow-200">Demo Mode Active - Connect your wallet to execute real trades on Linera Mainnet.</span>
+          </GlassCard>
+        )}
+
+        {/* Followed Strategies Quick Actions */}
+        {followedStrategies.length > 0 && (
+          <GlassCard className="p-4 border-purple-500/20 bg-purple-500/5">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <Zap className="text-purple-400" />
+                <span className="text-white font-medium">Active Strategies from Social</span>
+              </div>
+              <div className="flex gap-2">
+                {followedStrategies.slice(0, 3).map(strategy => (
+                  <button
+                    key={strategy.id}
+                    onClick={() => setTradeForm(prev => ({ ...prev, strategyId: strategy.id }))}
+                    className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${tradeForm.strategyId === strategy.id
+                        ? 'bg-purple-500 text-white'
+                        : 'bg-white/10 text-gray-300 hover:bg-white/20'
+                      }`}
+                  >
+                    {strategy.name}
+                  </button>
+                ))}
+                {followedStrategies.length > 3 && (
+                  <span className="px-3 py-1 text-gray-500 text-sm">+{followedStrategies.length - 3} more</span>
+                )}
+              </div>
+            </div>
           </GlassCard>
         )}
 
@@ -222,8 +280,8 @@ export default function TradingPage() {
                 <button
                   onClick={() => setSelectedDex('jupiter')}
                   className={`p-4 rounded-xl border transition-all duration-300 flex flex-col items-center gap-2 ${selectedDex === 'jupiter'
-                      ? 'bg-blue-500/20 border-blue-500 text-white shadow-lg shadow-blue-500/20'
-                      : 'bg-white/5 border-white/5 text-gray-500 hover:bg-white/10'
+                    ? 'bg-blue-500/20 border-blue-500 text-white shadow-lg shadow-blue-500/20'
+                    : 'bg-white/5 border-white/5 text-gray-500 hover:bg-white/10'
                     }`}
                 >
                   <span className="text-2xl">🪐</span>
@@ -232,8 +290,8 @@ export default function TradingPage() {
                 <button
                   onClick={() => setSelectedDex('raydium')}
                   className={`p-4 rounded-xl border transition-all duration-300 flex flex-col items-center gap-2 ${selectedDex === 'raydium'
-                      ? 'bg-purple-500/20 border-purple-500 text-white shadow-lg shadow-purple-500/20'
-                      : 'bg-white/5 border-white/5 text-gray-500 hover:bg-white/10'
+                    ? 'bg-purple-500/20 border-purple-500 text-white shadow-lg shadow-purple-500/20'
+                    : 'bg-white/5 border-white/5 text-gray-500 hover:bg-white/10'
                     }`}
                 >
                   <span className="text-2xl">☢️</span>
@@ -291,8 +349,8 @@ export default function TradingPage() {
                         key={s}
                         onClick={() => setTradeForm(prev => ({ ...prev, slippage: s }))}
                         className={`flex-1 py-1.5 rounded-lg text-xs font-mono transition-colors ${tradeForm.slippage === s
-                            ? 'bg-blue-500/20 text-blue-400 border border-blue-500/50'
-                            : 'bg-white/5 text-gray-500 border border-white/5 hover:bg-white/10'
+                          ? 'bg-blue-500/20 text-blue-400 border border-blue-500/50'
+                          : 'bg-white/5 text-gray-500 border border-white/5 hover:bg-white/10'
                           }`}
                       >
                         {s}%
