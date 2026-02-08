@@ -6,8 +6,8 @@
 
 FROM node:20-alpine
 
-# Install dependencies
-RUN apk add --no-cache curl
+# Install dependencies (including build tools for native modules)
+RUN apk add --no-cache curl python3 make g++ linux-headers eudev-dev
 
 WORKDIR /app
 
